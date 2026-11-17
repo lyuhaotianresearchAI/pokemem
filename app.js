@@ -46,6 +46,7 @@
         var s = JSON.parse(raw);
         if (s && typeof s.packs === "number" && s.collection) {
           if (!s.lang) s.lang = "zh";
+          Gacha.ensureTrainer(s); // 老存档补训练师资料（未注册、结晶 0），已有字段原样保留
           return s;
         }
       }
@@ -327,6 +328,7 @@
   });
 
   // ---------- 启动 ----------
+  Gacha.ensureTrainer(state); // 训练师资料：老存档补一个未注册的训练师，结晶 0，注册时再发 100
   Gacha.migrateCollection(state); // v1.5 前的旧存档只有汇总，补一条明细卡后保存
   Gacha.repairLegacyCards(state, Math.random); // v1.7：旧卡按公式补生成数值（原始数值已无法找回），只跑一次
   Gacha.enforceCap(state); // v1.8：每只最多保留 5 张卡，超过的按 Lv 从低到高去掉

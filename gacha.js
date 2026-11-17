@@ -18,6 +18,12 @@
   var SSR_PLUS = ["SSR", "UR", "MR"];
   var SR_PLUS = ["SR", "SSR", "UR", "MR"];
   var TIER_LABEL = { N: "普通", R: "稀有", SR: "超稀有", SSR: "传说", UR: "神话", MR: "幻之" };
+  // ---- 训练师（Task 4/5：只加数据结构 + 迁移，不改开包/计时行为）----
+  var TRAINER_MAX_LEVEL = 100; // 训练师与单张宝可梦卡的等级上限都是 100
+  var TRAINER_EXP_PER_LEVEL = 100; // 每升 1 级要 100 经验
+  var TRAINER_WELCOME_CRYSTALS = 100; // 注册时一次性给 100 梦想结晶（= 10 包），只给一次
+  var ITEM_IDS = ["poke_ball", "great_ball", "ultra_ball",
+    "fire_stone", "water_stone", "thunder_stone", "leaf_stone", "moon_stone"];
 
   function entry(id) { return POKEDEX[id - 1]; }
   function totalWeight() {
@@ -182,10 +188,73 @@
     return shuffle(cards, rng);
   }
 
+  // ---- 训练师资料 ----
+  // 新训练师：未注册、结晶 0。100 颗注册奖励不在这里发，由注册流程调用
+  // grantWelcomeCrystals 一次性发放，避免老存档迁移时没注册就先拿到结晶，
+  // 也避免注册流程重复发放。
+  function freshItems() {
+    return { poke_ball: 3, great_ball: 0, ultra_ball: 0,
+      fire_stone: 0, water_stone: 0, thunder_stone: 0, leaf_stone: 0, moon_stone: 0 };
+  }
+  function newTrainer() {
+    return { name: "", level: 1, exp: 0, crystals: 0, candy: 0,
+      items: freshItems(), registered: false, welcomeCrystalsGranted: false };
+  }
+  // 老存档迁移：没有 trainer 就补一个未注册的；已有的缺字段补默认值、坏值夹回合法范围，
+  // 已有的名字/等级/结晶/糖果/道具一律保留，不补发经验和结晶。
+  function ensureTrainer(state) {
+    // N1：只修缺失/坏掉/小于 2 的 version，不降级未来更高的版本
+    if (typeof state.version !== "number" || !isFinite(state.version) || state.version < 2) state.version = 2;
+    var t = state.trainer;
+    // F1：数组也是 typeof "object"，但 JSON.stringify 会丢掉数组上的具名属性，
+    // 存档会被悄悄清空，所以数组直接当损坏处理
+    if (!t || typeof t !== "object" || Array.isArray(t)) { state.trainer = newTrainer(); return state.trainer; }
+    if (typeof t.name !== "string") t.name = "";
+    if (typeof t.level !== "number" || !(t.level >= 1)) t.level = 1;
+    t.level = Math.min(TRAINER_MAX_LEVEL, Math.floor(t.level));
+    // F2：NaN / Infinity 也要当坏值处理（NaN < 0 是 false，旧写法会漏过去）
+    // F5：经验溢出按 100 进位成等级再保留余数，而不是直接丢弃
+    if (typeof t.exp !== "number" || !isFinite(t.exp) || t.exp < 0) t.exp = 0;
+    else {
+      t.exp = Math.floor(t.exp);
+      var bonusLevels = Math.floor(t.exp / TRAINER_EXP_PER_LEVEL);
+      if (bonusLevels > 0) {
+        t.level = Math.min(TRAINER_MAX_LEVEL, t.level + bonusLevels);
+        t.exp -= bonusLevels * TRAINER_EXP_PER_LEVEL;
+      }
+    }
+    if (t.level >= TRAINER_MAX_LEVEL) t.exp = 0;
+    if (typeof t.crystals !== "number" || !isFinite(t.crystals) || t.crystals < 0) t.crystals = 0;
+    else t.crystals = Math.floor(t.crystals);
+    if (typeof t.candy !== "number" || !isFinite(t.candy) || t.candy < 0) t.candy = 0;
+    else t.candy = Math.floor(t.candy);
+    if (!t.items || typeof t.items !== "object" || Array.isArray(t.items)) t.items = freshItems();
+    else ITEM_IDS.forEach(function (id) {
+      if (typeof t.items[id] !== "number" || !isFinite(t.items[id]) || t.items[id] < 0) t.items[id] = 0;
+      else t.items[id] = Math.floor(t.items[id]);
+    });
+    if (typeof t.registered !== "boolean") t.registered = t.name !== "";
+    // N2：已注册必然有名字；没名字的存档不能算已注册（注册流程会同时填名字和置 true）
+    if (!t.name) t.registered = false;
+    // F3：非布尔的旧标记按真值折算，不直接重置为 false（否则已发过的奖励会被重复发）
+    if (typeof t.welcomeCrystalsGranted !== "boolean") t.welcomeCrystalsGranted = !!t.welcomeCrystalsGranted;
+    return t;
+  }
+  // 注册奖励：第一次调用 +100 结晶并打标，之后再调用返回 0，不重复发放。
+  // 调用顺序：注册流程先填名字、置 registered=true，再调这里；不要在注册前调用。
+  function grantWelcomeCrystals(state) {
+    var t = ensureTrainer(state);
+    if (t.welcomeCrystalsGranted) return 0;
+    t.welcomeCrystalsGranted = true;
+    t.crystals += TRAINER_WELCOME_CRYSTALS;
+    return TRAINER_WELCOME_CRYSTALS;
+  }
+
   // ---- 卡包计时（正式版）----
   function newState(now) {
-    return { packs: 1, lastGrantAt: now, collection: {}, totalDraws: 0,
-             packsOpened: 0, sinceSSR: 0, debug: false, createdAt: now };
+    return { version: 2, packs: 1, lastGrantAt: now, collection: {}, totalDraws: 0,
+             packsOpened: 0, sinceSSR: 0, debug: false, createdAt: now,
+             trainer: newTrainer() };
   }
   // 按流逝时间补发卡包：每小时 1 包；返回本次补发数
   function grantDuePacks(state, now) {
@@ -209,6 +278,9 @@
   function ownedCount(state) { return Object.keys(state.collection).length; }
 
   var api = { PACK_SIZE: PACK_SIZE, PACK_INTERVAL_MS: PACK_INTERVAL_MS, TIER_LABEL: TIER_LABEL,
+    TRAINER_MAX_LEVEL: TRAINER_MAX_LEVEL, TRAINER_EXP_PER_LEVEL: TRAINER_EXP_PER_LEVEL,
+    TRAINER_WELCOME_CRYSTALS: TRAINER_WELCOME_CRYSTALS, ITEM_IDS: ITEM_IDS,
+    newTrainer: newTrainer, ensureTrainer: ensureTrainer, grantWelcomeCrystals: grantWelcomeCrystals,
     SR_PLUS: SR_PLUS, SSR_PLUS: SSR_PLUS, entry: entry, totalWeight: totalWeight,
     drawFromPool: drawFromPool, drawAny: drawAny, rollStats: rollStats, drawCard: drawCard,
     drawPack: drawPack, newState: newState, grantDuePacks: grantDuePacks,
