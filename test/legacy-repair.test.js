@@ -44,6 +44,7 @@ sandbox.window = sandbox;
 vm.createContext(sandbox);
 function run(file) { vm.runInContext(fs.readFileSync(__dirname + "/../" + file, "utf8"), sandbox, { filename: file }); }
 run("pokedex.js");
+run("avatars.js");
 run("i18n.js");
 run("gacha.js");
 

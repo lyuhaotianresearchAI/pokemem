@@ -34,6 +34,12 @@
   var CANDY_PER_LEVEL = 1; // 1 糖果升 1 级（Task 10，用户锁定）
   var ITEM_IDS = ["poke_ball", "great_ball", "ultra_ball", "master_ball",
     "fire_stone", "water_stone", "thunder_stone", "leaf_stone", "moon_stone"];
+  // 训练师头像（Task 20）：特别篇主角 25 人，id 顺序与 avatars.js 的 AVATARS 一致；
+  // 校验只认这个列表（avatars.js 是展示数据，gacha.js 是校验权威，和 ITEM_IDS/ITEM_NAME 的分工一样）
+  var AVATAR_IDS = ["red", "blue", "green", "yellow", "gold", "silver", "crystal",
+    "ruby", "sapphire", "emerald", "diamond", "pearl", "platinum", "black", "white",
+    "blake", "whitley", "x", "y", "sun", "moon", "sword", "shield", "scarlet", "violet"];
+  var DEFAULT_AVATAR_ID = "red";
 
   function entry(id) { return POKEDEX[id - 1]; }
   function totalWeight() {
@@ -224,7 +230,8 @@
   }
   function newTrainer() {
     return { name: "", level: 1, exp: 0, crystals: 0, candy: 0,
-      items: freshItems(), registered: false, welcomeCrystalsGranted: false };
+      items: freshItems(), registered: false, welcomeCrystalsGranted: false,
+      avatar: DEFAULT_AVATAR_ID };
   }
   // 老存档迁移：没有 trainer 就补一个未注册的；已有的缺字段补默认值、坏值夹回合法范围，
   // 已有的名字/等级/结晶/糖果/道具一律保留，不补发经验和结晶。
@@ -265,7 +272,16 @@
     if (!t.name) t.registered = false;
     // F3：非布尔的旧标记按真值折算，不直接重置为 false（否则已发过的奖励会被重复发）
     if (typeof t.welcomeCrystalsGranted !== "boolean") t.welcomeCrystalsGranted = !!t.welcomeCrystalsGranted;
+    // Task 20：老存档没有 avatar 字段、或值不在列表里，一律回默认赤红（不报错、不丢其他数据）
+    if (typeof t.avatar !== "string" || AVATAR_IDS.indexOf(t.avatar) < 0) t.avatar = DEFAULT_AVATAR_ID;
     return t;
+  }
+  // 换头像（Task 20）：只认 AVATAR_IDS 里的 id；非法 id 返回 false 且不动存档；
+  // 不保存——调用方（训练师页）成功后调 PokeMem.save()，和兑换结晶的分工一样
+  function setAvatar(state, id) {
+    if (typeof id !== "string" || AVATAR_IDS.indexOf(id) < 0) return false;
+    ensureTrainer(state).avatar = id;
+    return true;
   }
   // 注册奖励：第一次调用 +100 结晶并打标，之后再调用返回 0，不重复发放。
   // 调用顺序：注册流程先填名字、置 registered=true，再调这里；不要在注册前调用。
@@ -407,6 +423,7 @@
     TRAINER_EXP_TABLE: TRAINER_EXP_TABLE, TRAINER_CANDY_PER_LEVEL: TRAINER_CANDY_PER_LEVEL,
     TRAINER_MILESTONE_REWARDS: TRAINER_MILESTONE_REWARDS, TRAINER_CANDY_TABLE: TRAINER_CANDY_TABLE,
     CANDY_PER_LEVEL: CANDY_PER_LEVEL, ITEM_IDS: ITEM_IDS,
+    AVATAR_IDS: AVATAR_IDS, DEFAULT_AVATAR_ID: DEFAULT_AVATAR_ID, setAvatar: setAvatar,
     newTrainer: newTrainer, ensureTrainer: ensureTrainer, grantWelcomeCrystals: grantWelcomeCrystals,
     validateTrainerName: validateTrainerName, registerTrainer: registerTrainer,
     exchangeCrystalsForPack: exchangeCrystalsForPack, addTrainerExp: addTrainerExp,

@@ -9,7 +9,7 @@ const fs = require("fs");
 const path = require("path");
 const GachaNode = require("../gacha.js"); // 仅用于造旧存档夹具
 
-const FILES = ["pokedex.js", "i18n.js", "gacha.js", "js/store.js", "js/util.js",
+const FILES = ["pokedex.js", "avatars.js", "i18n.js", "gacha.js", "js/store.js", "js/util.js",
   "js/lang.js", "js/home.js", "js/dex.js", "js/rates.js", "js/tabs.js",
   "js/debug.js", "js/register.js", "js/trainer.js", "js/boot.js"];
 
@@ -455,6 +455,31 @@ $F("exchange-btn").click();
 check("F 兑换后结晶归零、包 +1、按钮禁用",
   ctxF.state.trainer.crystals === 0 && ctxF.state.packs === 4 && $F("exchange-btn").disabled === true,
   "结晶 " + ctxF.state.trainer.crystals + "，包 " + ctxF.state.packs);
+
+// ---------- 场景 G：Task 20——头像默认、打开选择器、点选换头像并保存 ----------
+const G = runApp({});
+const ctxG = G.PokeMem.ctx;
+const $G = function (id) { return G.doc.getElementById(id); };
+$G("register-name-input").value = "小智";
+$G("register-submit-btn").click();
+$G("register-start-btn").click();
+check("G 注册后默认头像是赤红", ctxG.state.trainer.avatar === "red" && $G("trainer-avatar").src.indexOf("data:image/webp;base64,") === 0);
+var redSrc = $G("trainer-avatar").src;
+$G("trainer-avatar-btn").click();
+check("G 点换头像打开选择器", $G("avatar-overlay").classList.contains("show"));
+var gridBtns = $G("avatar-grid").children;
+check("G 选择器里 25 个头像", gridBtns.length === 25, "实际 " + gridBtns.length);
+var moonBtn = gridBtns.filter(function (b) { return b.getAttribute("data-avatar") === "moon"; })[0];
+moonBtn.click();
+check("G 点满月头像立即换上", ctxG.state.trainer.avatar === "moon" && $G("trainer-avatar").src !== redSrc && $G("trainer-avatar").src === G.sandbox.AVATARS.filter(function (a) { return a.id === "moon"; })[0].img);
+check("G 换头像已保存", JSON.parse(G.sandbox.localStorage.getItem("pokemem-save-v1")).trainer.avatar === "moon");
+var moonBtn2 = $G("avatar-grid").children.filter(function (b) { return b.getAttribute("data-avatar") === "moon"; })[0];
+check("G 选中项有高亮", moonBtn2.classList.contains("selected"));
+$G("avatar-close").click();
+check("G 点关闭收起选择器", !$G("avatar-overlay").classList.contains("show"));
+ctxG.state.trainer.avatar = "pikachu"; // 非法值
+G.PokeMem.renderTrainer();
+check("G 非法头像渲染时回默认赤红", ctxG.state.trainer.avatar === "red" && $G("trainer-avatar").src === G.sandbox.AVATARS[0].img);
 
 console.log(failures === 0 ? "ALL PASS" : failures + " FAILURES");
 process.exit(failures === 0 ? 0 : 1);

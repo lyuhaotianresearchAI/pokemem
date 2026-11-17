@@ -93,5 +93,23 @@ check("顶栏在弹窗之上（z-index 高于弹窗 20，低于轻提示 40）",
 const overlayShowLine = css.split("\n").filter(function (l) { return l.indexOf(".overlay.show {") === 0; })[0] || "";
 check("弹窗留出顶栏高度（盒子不被顶栏盖住）", overlayShowLine.indexOf("padding: 68px 12px 20px") >= 0, overlayShowLine);
 
+// Task 20 头像
+const { AVATARS } = require("../avatars.js");
+const gachaJs = fs.readFileSync(__dirname + "/../gacha.js", "utf8");
+check("头像 25 个", AVATARS.length === 25, "实际 " + AVATARS.length);
+check("头像图以内嵌 WebP data URI 存在（connector 只收文本，二进制推不上去）",
+  AVATARS.every(function (a) { return a.img.indexOf("data:image/webp;base64,") === 0; }));
+check("头像校验列表在 gacha.js 里（AVATAR_IDS）",
+  gachaJs.includes("AVATAR_IDS") && gachaJs.includes('DEFAULT_AVATAR_ID = "red"'));
+check("页面加载头像数据", html.includes('<script src="avatars.js"></script>'));
+check("训练师卡有头像和换头像按钮",
+  html.includes('id="trainer-avatar"') && html.includes('id="trainer-avatar-btn"') && html.includes('id="avatar-overlay"') && html.includes('id="avatar-grid"'));
+check("CSS 有头像圆形裁切与选择器网格",
+  css.includes(".trainer-avatar") && css.includes("border-radius: 50%") && css.includes(".avatar-grid") && css.includes(".avatar-option.selected"));
+check("头像用 createElement 造按钮（测试桩可点）",
+  trainerJs.includes('document.createElement("button")') && trainerJs.includes('classList.add("avatar-option")'));
+check("非法头像回默认赤红（ensureTrainer 修 + avatarById 兜底，不靠不存在的文件）",
+  trainerJs.includes("return AVATARS[0]") && !html.includes("assets/avatars/"));
+
 console.log(failures === 0 ? "\n全部通过 ✅" : "\n失败 " + failures + " 项 ❌");
 process.exit(failures === 0 ? 0 : 1);

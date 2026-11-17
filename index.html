@@ -100,6 +100,10 @@
   <!-- 训练师页 -->
   <section id="tab-trainer" class="tab-page">
     <div class="trainer-card">
+      <div class="trainer-avatar-row">
+        <img id="trainer-avatar" class="trainer-avatar" alt="">
+        <button id="trainer-avatar-btn" data-i18n="avatarChange">换头像</button>
+      </div>
       <h2 id="trainer-name"></h2>
       <p class="hint" id="trainer-level"></p>
       <div class="exp-bar"><div id="trainer-exp-fill" class="exp-fill"></div></div>
@@ -164,6 +168,15 @@
   </div>
 </div>
 
+<!-- 头像选择 -->
+<div id="avatar-overlay" class="overlay">
+  <div class="overlay-box avatar-box">
+    <h2 data-i18n="avatarTitle">选择头像</h2>
+    <div id="avatar-grid" class="avatar-grid"></div>
+    <button id="avatar-close" class="big-btn" data-i18n="closeBtn">关闭</button>
+  </div>
+</div>
+
 <!-- 卡片详情 -->
 <div id="detail-modal" class="overlay">
   <div class="overlay-box detail-box">
@@ -184,6 +197,7 @@
 <div id="toast" class="toast"></div>
 
 <script src="pokedex.js"></script>
+<script src="avatars.js"></script>
 <script src="i18n.js"></script>
 <script src="gacha.js"></script>
 <script src="js/store.js"></script>

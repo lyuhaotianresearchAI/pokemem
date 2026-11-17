@@ -1,6 +1,7 @@
 // PokeMem 本地验证：node test/gacha.test.js
 // 检查：图鉴完整性、概率分布、10连保底、50抽保底、数值公式、卡包计时
 const { POKEDEX } = require("../pokedex.js");
+const { AVATARS } = require("../avatars.js");
 const Gacha = require("../gacha.js");
 
 let failures = 0;
@@ -196,6 +197,27 @@ nanState.trainer.crystals = NaN; nanState.trainer.candy = Infinity;
 Gacha.ensureTrainer(nanState);
 check("NaN 结晶 → 0、Infinity 糖果 → 0", nanState.trainer.crystals === 0 && nanState.trainer.candy === 0);
 check("NaN 修好后注册奖励仍能完整发出 100", Gacha.grantWelcomeCrystals(nanState) === 100 && nanState.trainer.crystals === 100);
+// Task 20 头像：默认值、迁移修复、换头像校验、与 avatars.js 展示数据一致
+check("新存档默认头像是赤红", st0.trainer.avatar === "red");
+check("头像目录 25 个、首尾是赤红/紫",
+  Gacha.AVATAR_IDS.length === 25 && Gacha.AVATAR_IDS[0] === "red" && Gacha.AVATAR_IDS[24] === "violet");
+check("展示数据 AVATARS 的 id 与校验列表完全一致",
+  AVATARS.length === Gacha.AVATAR_IDS.length && AVATARS.every(function (a, i) { return a.id === Gacha.AVATAR_IDS[i]; }));
+check("展示数据每人都有中英文名和内嵌 WebP 图（connector 推不了二进制，图以 data URI 嵌在 avatars.js 里）",
+  AVATARS.every(function (a) { return a.zh && a.en && a.img.indexOf("data:image/webp;base64,") === 0; }));
+const noAvatar = Gacha.newState(0); delete noAvatar.trainer.avatar;
+Gacha.ensureTrainer(noAvatar);
+check("老存档缺 avatar 字段 → 补默认赤红", noAvatar.trainer.avatar === "red");
+const badAvatar = Gacha.newState(0); badAvatar.trainer.avatar = "pikachu";
+Gacha.ensureTrainer(badAvatar);
+check("非法头像值 → 回默认赤红", badAvatar.trainer.avatar === "red");
+const goodAvatar = Gacha.newState(0); goodAvatar.trainer.avatar = "blue";
+Gacha.ensureTrainer(goodAvatar);
+check("合法头像值保留", goodAvatar.trainer.avatar === "blue");
+const swap = Gacha.newState(0);
+check("换头像合法 → true 且生效", Gacha.setAvatar(swap, "moon") === true && swap.trainer.avatar === "moon");
+check("换头像非法 → false 且不动", Gacha.setAvatar(swap, "pikachu") === false && swap.trainer.avatar === "moon");
+check("换头像不认非字符串", Gacha.setAvatar(swap, 3) === false && swap.trainer.avatar === "moon");
 // F3：真值的非布尔已发标记不能被重置，否则奖励会重复发
 const flagState = Gacha.newState(0);
 flagState.trainer.welcomeCrystalsGranted = 1; flagState.trainer.crystals = 100;
