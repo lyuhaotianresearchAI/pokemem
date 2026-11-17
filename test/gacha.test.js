@@ -460,6 +460,13 @@ const xr9 = Gacha.addTrainerExp(xp9, 1700);
 check("9 级 +1700：连升 17 级到 26 级，两个里程碑各给 3 个球、糖果 +34",
   xr9.levels === 17 && xp9.trainer.level === 26 && xp9.trainer.exp === 0 &&
   xr9.items.great_ball === 3 && xr9.items.ultra_ball === 3 && xr9.candy === 34 && xp9.trainer.candy === 34);
+// 19e. NEW 角标落在展示顺序的第一张上（Task 18：洗牌后判定；之前先判定再洗牌，角标会落在最后一张展示的卡上）
+const sNB = Gacha.newState(0); sNB.packs = 1;
+const packNB = Gacha.drawPack(sNB, () => 0); // 9 张 #001 + 保底 #003，展示顺序已洗牌
+const onesNB = packNB.filter(function (c) { return c.id === 1; });
+check("NEW 在第一张展示的 #001 上，其余 8 张没有",
+  onesNB.length === 9 && onesNB[0].isNew === true && onesNB.slice(1).every(function (c) { return !c.isNew; }));
+check("NEW 总数还是新物种数（#001 + #003）", packNB.filter(function (c) { return c.isNew; }).length === 2);
 
 console.log(failures === 0 ? "\n全部通过 ✅" : "\n失败 " + failures + " 项 ❌");
 process.exit(failures === 0 ? 0 : 1);

@@ -74,6 +74,15 @@ check("卡背不再是问号/CSS 手绘", !app.includes('<div class="card-back">
 const homeJs = fs.readFileSync(__dirname + "/../js/home.js", "utf8");
 check("开包页也不再渲染问号占位", !homeJs.includes('<div class="card-back">?</div>') && homeJs.includes('<div class="card-front"></div>'));
 check("卡背没有定高裁切和白色内描边", !css.includes("min-height: 232px") && !css.includes("inset 0 0 0 3px"));
+check("CSS 有经验条轨道（高度+底色）", css.includes(".exp-bar") && css.includes("height: 10px"));
+check("CSS 有经验条填充（蓝紫渐变）", css.includes(".exp-fill") && css.includes("linear-gradient(90deg, #4a90d9, #9b59b6)"));
+check("CSS 有训练师卡片/道具/改名样式",
+  css.includes(".trainer-card") && css.includes(".trainer-items") && css.includes(".trainer-item.zero") && css.includes(".trainer-rename input"));
+const topbarLine = css.split("\n").filter(function (l) { return l.indexOf(".topbar {") === 0; })[0] || "";
+check("顶栏在弹窗之上（z-index 高于弹窗 20，低于轻提示 40）",
+  topbarLine.indexOf("z-index: 35") >= 0, topbarLine);
+const overlayShowLine = css.split("\n").filter(function (l) { return l.indexOf(".overlay.show {") === 0; })[0] || "";
+check("弹窗留出顶栏高度（盒子不被顶栏盖住）", overlayShowLine.indexOf("padding: 68px 12px 20px") >= 0, overlayShowLine);
 
 console.log(failures === 0 ? "\n全部通过 ✅" : "\n失败 " + failures + " 项 ❌");
 process.exit(failures === 0 ? 0 : 1);

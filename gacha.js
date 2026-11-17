@@ -196,13 +196,6 @@
     state.packs -= 1;
     state.packsOpened += 1;
     state.totalDraws += PACK_SIZE;
-    // NEW 判定：开包前未拥有、且是本包内第一次出现的那张
-    var seenInPack = {};
-    cards.forEach(function (c) {
-      c.isNew = !state.collection[c.id] && !seenInPack[c.id];
-      seenInPack[c.id] = true;
-    });
-    cards.forEach(function (c) { addToCollection(state, c); });
     // 训练师经验结算（Task 8）：整包 10 张都按稀有度算经验，保底那张也算。
     // 结算结果挂在返回的包上，给 Task 14 的开包结果行和升级提示读；
     // 返回类型不变，仍是卡数组。存盘由调用方负责（首页开包按钮在 drawPack 后调 save）。
@@ -210,6 +203,13 @@
     cards.forEach(function (c) { packExp += TRAINER_EXP_TABLE[c.tier] || 0; });
     var expResult = addTrainerExp(state, packExp);
     var result = shuffle(cards, rng);
+    // NEW 判定：开包前未拥有、且是展示顺序里第一次出现的那张（Task 18：洗牌后判定，角标落在第一张展示的卡上；之前先判定再洗牌，角标会落在最后一张展示的卡上）
+    var seenInPack = {};
+    result.forEach(function (c) {
+      c.isNew = !state.collection[c.id] && !seenInPack[c.id];
+      seenInPack[c.id] = true;
+    });
+    result.forEach(function (c) { addToCollection(state, c); });
     result.trainerExp = { exp: packExp, levels: expResult.levels, candy: expResult.candy, items: expResult.items };
     return result;
   }
