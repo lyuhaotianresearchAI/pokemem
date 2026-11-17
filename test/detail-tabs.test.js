@@ -54,6 +54,7 @@ const state = Gacha.newState(1000000);
 [71, 40, 90, 65, 55, 88, 30].forEach((lv, i) => {
   Gacha.addToCollection(state, { id: 33, level: lv, hp: 100 + i, atk: 50 + i });
 });
+Gacha.addToCollection(state, { id: 1, level: 50, hp: 151, atk: 100 }); // #001 妙蛙种子（草、毒，双属性）1 张，验卡面双徽章
 state.trainer.candy = 5; // 升级测试用糖果
 sandbox.localStorage.setItem("pokemem-save-v1", JSON.stringify(state));
 // app.js 已拆成 js/ 模块（PR #3），按 index.html 里的加载顺序跑
@@ -61,6 +62,7 @@ run("js/store.js");
 run("js/util.js");
 run("js/lang.js");
 run("js/types.js");
+run("js/scenes.js");
 run("js/home.js");
 run("js/dex.js");
 run("js/rates.js");
@@ -74,6 +76,16 @@ run("js/boot.js"); // 启动：首次渲染（applyLang 会渲染卡册格子）
 const grid = els["collection-grid"];
 const cell = grid.children[32];
 check("卡册格子有 151 个格", grid.children.length === 151, "实际 " + grid.children.length);
+// 卡面：像一张真正的卡——左上角属性徽章 + 属性 pastel 底色 + 白色画框
+const cell001 = grid.children[0]; // #001 妙蛙种子（草、毒），已拥有
+check("已拥有格子按主属性染色（草）", cell001.className.indexOf("tbg-grass") >= 0, cell001.className);
+check("双属性格子左上角有两个属性徽章", (cell001.innerHTML.match(/type-chip/g) || []).length === 2);
+check("已拥有格子图片在白色画框里", cell001.innerHTML.indexOf("card-art") >= 0);
+const cell002 = grid.children[1]; // #002 妙蛙草，未拥有
+check("未拥有格子不染色（留白 + 剪影）", cell002.className.indexOf("tbg-") < 0 && cell002.className.indexOf("missing") >= 0, cell002.className);
+check("未拥有格子没有属性徽章", cell002.innerHTML.indexOf("card-types") < 0);
+const cell033 = grid.children[32]; // #033 尼多力诺（毒），已拥有
+check("单属性格子按主属性染色（毒）", cell033.className.indexOf("tbg-poison") >= 0, cell033.className);
 cell.listeners.click[0]();
 
 const html = els["detail-cards"].innerHTML;
@@ -110,6 +122,20 @@ check("99 级时按钮可用", els["detail-levelup-btn"].disabled === false);
 els["detail-levelup-btn"].listeners.click[0]();
 check("自然升到 100 级", sandbox.PokeMem.ctx.detailSelected.level === 100);
 check("满级时按钮禁用", els["detail-levelup-btn"].disabled === true);
+
+// ---------- 未拥有详情：剪影 + 摇晃的问号，不泄露名字/属性/弱点 ----------
+cell002.listeners.click[0](); // #002 妙蛙草，未拥有
+check("未拥有详情：图是剪影（detail-art 带 missing）", els["detail-art"].className.indexOf("missing") >= 0, els["detail-art"].className);
+check("未拥有详情：名字是问号不泄露", els["detail-name"].textContent.indexOf("？？？") >= 0 && els["detail-name"].textContent.indexOf("妙蛙草") < 0, els["detail-name"].textContent);
+check("未拥有详情：meta 不带属性徽章", els["detail-meta"].innerHTML.indexOf("type-chip") < 0, els["detail-meta"].innerHTML);
+check("未拥有详情：meta 还留稀有度和概率", els["detail-meta"].innerHTML.indexOf("稀有") >= 0 && els["detail-meta"].innerHTML.indexOf("单只概率") >= 0);
+check("未拥有详情：弱点行藏起来", els["detail-weakness"].innerHTML === "" && els["detail-weakness"].style.display === "none");
+check("未拥有详情：没有卡片 tab", els["detail-cards"].innerHTML === "");
+cell.listeners.click[0](); // 再点回 #033 尼多力诺（已拥有）
+check("已拥有详情：剪影去掉", els["detail-art"].className.indexOf("missing") < 0, els["detail-art"].className);
+check("已拥有详情：名字是真名", els["detail-name"].textContent.indexOf("尼多力诺") >= 0, els["detail-name"].textContent);
+check("已拥有详情：meta 有属性徽章", els["detail-meta"].innerHTML.indexOf("type-chip") >= 0);
+check("已拥有详情：弱点行显示", els["detail-weakness"].innerHTML.indexOf("弱点") >= 0 && els["detail-weakness"].style.display === "");
 
 console.log(failures === 0 ? "\n全部通过 ✅" : "\n失败 " + failures + " 项 ❌");
 process.exit(failures === 0 ? 0 : 1);

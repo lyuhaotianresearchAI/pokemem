@@ -67,20 +67,24 @@
     var wrap = $("pack-cards");
     wrap.innerHTML = "";
     ctx.currentPack.forEach(function (c) {
+      var typeIds = PokeMem.Types.parseTypes(c.types);
       var d = document.createElement("div");
-      d.className = "pack-card " + PokeMem.tierClass(c.tier);
+      d.className = "pack-card " + PokeMem.tierClass(c.tier) + (typeIds[0] ? " tbg-" + typeIds[0] : "");
       d.dataset.tier = c.tier;
       d.innerHTML =
         '<div class="card-inner">' +
         '<div class="card-front"></div>' +
         '<div class="card-face">' +
-        '<img src="' + imgUrl(c.id) + '" alt="' + cardName(c) + '" loading="lazy" onerror="this.style.display=\'none\'">' +
+        '<div class="card-types">' +
+        typeIds.map(function (id) { return PokeMem.Types.typeIconHtml(id); }).join("") +
+        (c.pity ? '<span class="pity-badge">' + t("pityBadge") + "</span>" : "") +
+        "</div>" +
+        '<div class="card-art"><img src="' + imgUrl(c.id) + '" alt="' + cardName(c) + '" loading="lazy" onerror="this.style.display=\'none\'"></div>' +
         '<div class="card-no">#' + String(c.id).padStart(3, "0") + '</div>' +
         '<div class="card-name">' + cardName(c) + '</div>' +
         '<div class="card-tier">' + PokeMem.mark(c.tier) + " " + c.tier + " · " + tierLabel(c.tier) + "</div>" +
         '<div class="card-stats">Lv.' + c.level + "　HP " + c.hp + "　" + t("atkLabel") + " " + c.atk + "</div>" +
         (c.isNew ? '<div class="new-badge">NEW</div>' : "") +
-        (c.pity ? '<div class="pity-badge">' + t("pityBadge") + "</div>" : "") +
         "</div></div>";
       d.addEventListener("click", function () {
         if (d.classList.contains("flipped")) return;

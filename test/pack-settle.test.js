@@ -1,6 +1,6 @@
 // PokeMem 开包预览/提交验证：node test/pack-settle.test.js
 // 没翻牌关闭 = 包没开过：预览不改存档，提交才扣包入册结算
-require("../card-progress.js"); // 副作用：挂 globalThis.CardProgress（gacha.js 入册时用）
+require("../card-progress.js"); // Task 24：gacha.js 入册时调 CardProgress，必须先加载
 const Gacha = require("../gacha.js");
 
 let failures = 0;

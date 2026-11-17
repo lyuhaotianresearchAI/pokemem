@@ -62,6 +62,13 @@ check("CSS 有开包按钮呼吸光晕", css.includes("@keyframes btn-glow"));
 check("CSS 有弹窗弹出动画", css.includes("@keyframes pop-in"));
 check("CSS 有 NEW 角标弹跳", css.includes("@keyframes badge-bounce"));
 check("卡片悬停会上浮", css.includes(".pack-card:hover") && css.includes(".dex-cell:hover"));
+// 卡面：属性底色 + 左上角属性徽章 + 画框
+["normal", "fire", "water", "electric", "grass", "ice", "fighting", "poison", "ground", "flying", "psychic", "bug", "rock", "ghost", "dragon"].forEach(function (id) {
+  check("CSS 有属性底色 .tbg-" + id, css.includes(".tbg-" + id + " { --tb:"));
+});
+check("卡面背景用属性底色（开包 + 卡册）", css.includes(".card-face { background: var(--tb, #fff);") && css.includes(".dex-cell { background: var(--tb, #fff);"));
+check("卡面左上角有属性徽章行", css.includes(".card-types {") && css.includes("justify-content: flex-start"));
+check("卡面图片在白色画框里", css.includes(".card-art {"));
 check("顶栏是渐变圆角", css.includes("linear-gradient(120deg, #ff6b6b"));
 const i18nText = fs.readFileSync(__dirname + "/../i18n.js", "utf8");
 check("页面加载可爱字体（Baloo 2 + 站酷快乐体）", html.includes("Baloo+2") && html.includes("ZCOOL+KuaiLe"));
@@ -141,6 +148,14 @@ check("详情页有弱点行", html.includes('id="detail-weakness"'));
 check("详情用属性图标 + 弱点图标",
   dexJs.includes("typeChipHtml") && dexJs.includes("weaknessesFor") && dexJs.includes("detail-weakness"));
 check("属性徽章有样式", css.includes(".type-chip") && css.includes(".type-chip img"));
+check("开包卡面按主属性染色 + 徽章行 + 画框", homeJs.includes("tbg-") && homeJs.includes("card-types") && homeJs.includes("card-art"));
+check("卡册格子按主属性染色 + 徽章行 + 画框", dexJs.includes("tbg-") && dexJs.includes("card-types") && dexJs.includes("card-art"));
+check("卡面属性标只要图标不要字", homeJs.includes("typeIconHtml") && dexJs.includes("typeIconHtml"));
+check("卡面属性标是圆形图标（白圈 + 阴影）", css.includes(".card-types .type-chip img") && css.includes("width: 20px") && css.includes("rgba(255,255,255,.95)"));
+check("详情图有剪影 + 问号容器", html.includes('id="detail-art"') && html.includes('class="detail-unknown">?</span>'));
+check("未拥有详情剪影样式（同格子剪影）", css.includes(".detail-art.missing img") && css.includes("filter: brightness(0)"));
+check("问号会摇晃", css.includes("@keyframes q-wobble") && css.includes(".detail-unknown"));
+check("详情页未拥有走剪影分支", dexJs.includes("detail-art") && dexJs.includes("var missing = !owned") && dexJs.includes('t("missingName")'));
 check("旧的纯文字 typeLabel 已删", !fs.readFileSync(__dirname + "/../js/lang.js", "utf8").includes("typeLabel") && !dexJs.includes("typeLabel"));
 
 console.log(failures === 0 ? "\n全部通过 ✅" : "\n失败 " + failures + " 项 ❌");

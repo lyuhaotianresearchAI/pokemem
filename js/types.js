@@ -74,11 +74,16 @@
     return '<span class="type-chip"><img src="' + typeIconUrl(id) + '" alt="' + name + '" loading="lazy" onerror="this.style.display=\'none\'">' +
       name + (mult > 1 ? ' <b class="mult">×' + mult + "</b>" : "") + "</span>";
   }
+  // 卡面左上角的属性标：只要图标、不要字（双属性并排两个标；名字只留 alt，不显示）
+  function typeIconHtml(id) {
+    var name = TYPE_ZH[id] || id;
+    return '<span class="type-chip"><img src="' + typeIconUrl(id) + '" alt="' + name + '" loading="lazy" onerror="this.style.display=\'none\'"></span>';
+  }
 
   var Types = { TYPE_ORDER: TYPE_ORDER, TYPE_ZH: TYPE_ZH, TYPE_EN: TYPE_EN,
     TYPE_CHART: TYPE_CHART, typeIconUrl: typeIconUrl, typeName: typeName,
     parseTypes: parseTypes, effectiveness: effectiveness,
-    weaknessesFor: weaknessesFor, typeChipHtml: typeChipHtml };
+    weaknessesFor: weaknessesFor, typeChipHtml: typeChipHtml, typeIconHtml: typeIconHtml };
 
   if (typeof window !== "undefined") {
     window.PokeMem = window.PokeMem || {};

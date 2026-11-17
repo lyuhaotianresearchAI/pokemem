@@ -10,7 +10,7 @@ const path = require("path");
 const GachaNode = require("../gacha.js"); // 仅用于造旧存档夹具
 
 const FILES = ["pokedex.js", "avatars.js", "i18n.js", "card-progress.js", "gacha.js", "js/store.js", "js/util.js",
-  "js/lang.js", "js/types.js", "js/home.js", "js/dex.js", "js/rates.js", "js/tabs.js",
+  "js/lang.js", "js/types.js", "js/scenes.js", "js/home.js", "js/dex.js", "js/rates.js", "js/tabs.js",
   "js/debug.js", "js/register.js", "js/trainer.js", "js/boot.js"];
 
 let failures = 0;
@@ -269,20 +269,40 @@ check("A 入册后升级弹出提示", $A("toast").classList.contains("show") &&
 check("A 关闭浮层", !$A("pack-overlay").classList.contains("show"));
 check("A 卡册 151 格", $A("collection-grid").children.length === 151, "实际 " + $A("collection-grid").children.length);
 
-$A("collection-grid").children[0].click();
+// 详情：点包里实际开出的第一只（随机包，#001 未必开出；未拥有是剪影、不带属性）
+var ownedCellA = null, ownedIdA = 0;
+$A("collection-grid").children.forEach(function (cellEl, i) {
+  if (!ownedCellA && ctxA.state.collection[i + 1]) { ownedCellA = cellEl; ownedIdA = i + 1; }
+});
+check("A 包里至少开出 1 只", !!ownedCellA);
+ownedCellA.click();
 check("A 点格子开详情", $A("detail-modal").classList.contains("show"));
-check("A 详情是 #001", $A("detail-name").textContent.indexOf("#001") === 0, $A("detail-name").textContent);
-check("A 详情属性是图标（草、毒）",
-  $A("detail-meta").innerHTML.indexOf("grass.svg") >= 0 && $A("detail-meta").innerHTML.indexOf("poison.svg") >= 0,
+var rowA = A.sandbox.POKEDEX.filter(function (r) { return r[0] === ownedIdA; })[0];
+check("A 详情是开出的那只", $A("detail-name").textContent.indexOf("#" + String(ownedIdA).padStart(3, "0")) === 0, $A("detail-name").textContent);
+var typeIdsA = A.PokeMem.Types.parseTypes(rowA[3]);
+check("A 详情属性是图标",
+  typeIdsA.every(function (id) { return $A("detail-meta").innerHTML.indexOf(id + ".svg") >= 0; }),
   $A("detail-meta").innerHTML);
-check("A 详情弱点是图标（虫×4、火、冰、飞行、超能力）",
-  $A("detail-weakness").innerHTML.indexOf("弱点") >= 0 &&
-  $A("detail-weakness").innerHTML.indexOf("bug.svg") >= 0 &&
-  $A("detail-weakness").innerHTML.indexOf("×4") >= 0 &&
-  $A("detail-weakness").innerHTML.indexOf("psychic.svg") >= 0,
+var weakA = A.PokeMem.Types.weaknessesFor(typeIdsA);
+check("A 详情弱点是图标",
+  $A("detail-weakness").innerHTML.indexOf("弱点") >= 0 && weakA.length > 0 &&
+  weakA.every(function (w) { return $A("detail-weakness").innerHTML.indexOf(w.type + ".svg") >= 0; }),
   $A("detail-weakness").innerHTML);
 $A("detail-close").click();
 check("A 关闭详情", !$A("detail-modal").classList.contains("show"));
+// 未拥有：还是剪影 + 问号，不泄露名字/属性/弱点
+var missingCellA = null, missingIdA = 0;
+$A("collection-grid").children.forEach(function (cellEl, i) {
+  if (!missingCellA && !ctxA.state.collection[i + 1]) { missingCellA = cellEl; missingIdA = i + 1; }
+});
+check("A 还有没开出的格子", !!missingCellA);
+missingCellA.click();
+check("A 未拥有详情是剪影", $A("detail-art").className.indexOf("missing") >= 0, $A("detail-art").className);
+check("A 未拥有详情名字是问号", $A("detail-name").textContent.indexOf("？？？") >= 0 && $A("detail-name").textContent.indexOf("#" + String(missingIdA).padStart(3, "0")) === 0, $A("detail-name").textContent);
+check("A 未拥有详情不带属性", $A("detail-meta").innerHTML.indexOf(".svg") < 0, $A("detail-meta").innerHTML);
+check("A 未拥有详情弱点行藏起", $A("detail-weakness").innerHTML === "");
+$A("detail-close").click();
+check("A 再关详情", !$A("detail-modal").classList.contains("show"));
 
 byAttr(A.doc._bySelector["[data-tab]"], "data-tab", "rates").click();
 check("A 切概率页", A.doc._bySelector[".tab-page"][2].classList.contains("active"));

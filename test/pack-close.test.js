@@ -93,7 +93,7 @@ sandbox.window = sandbox;
 sandbox.globalThis = sandbox;
 vm.createContext(sandbox);
 
-["pokedex.js", "i18n.js", "card-progress.js", "gacha.js", "js/store.js", "js/util.js", "js/lang.js", "js/home.js"].forEach(f => {
+["pokedex.js", "i18n.js", "card-progress.js", "gacha.js", "js/store.js", "js/util.js", "js/lang.js", "js/types.js", "js/home.js"].forEach(f => {
   vm.runInContext(fs.readFileSync(__dirname + "/../" + f, "utf8"), sandbox, { filename: f });
 });
 
@@ -111,6 +111,11 @@ byId["open-pack-btn"].click();
 check("开包后浮层显示", overlayShown());
 check("开包预览时包数还没扣（仍是 3）", state.packs === 3, "包数 " + state.packs);
 check("开包时按钮是“关闭”", closeBtnLabel() === "关闭", "按钮文案 " + closeBtnLabel());
+// 卡面：像一张真正的卡——左上角属性徽章 + 属性 pastel 底色 + 白色画框
+const cards1 = byId["pack-cards"].children;
+check("卡面 10 张都有属性底色 class", cards1.every(function (el) { return /tbg-(normal|fire|water|electric|grass|ice|fighting|poison|ground|flying|psychic|bug|rock|ghost|dragon)/.test(el.className); }));
+check("卡面左上角有属性徽章行", cards1.every(function (el) { return el.innerHTML.indexOf("card-types") >= 0 && el.innerHTML.indexOf("type-chip") >= 0; }));
+check("卡面图片在白色画框里", cards1.every(function (el) { return el.innerHTML.indexOf("card-art") >= 0; }));
 const savesBeforeClose = saveCalls;
 byId["close-pack-btn"].click();
 check("没翻牌关闭后浮层关了", !overlayShown());
