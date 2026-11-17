@@ -108,5 +108,43 @@ check("迁移补 1 条明细卡（最高数值）", e4.cards.length === 1 && e4.
 check("迁移余 2 张记 legacy", e4.legacy === 2);
 check("迁移可重复跑（幂等）", (Gacha.migrateCollection(s6), e4.cards.length === 1 && e4.legacy === 2));
 
+// 10. 每只上限 5 张：超过的去掉 Lv 最低的
+const s8 = Gacha.newState(0);
+[71, 40, 90, 65, 55, 88, 30].forEach((lv, i) => Gacha.addToCollection(s8, { id: 33, level: lv, hp: 100 + i, atk: 50 + i }));
+const e33 = s8.collection[33];
+check("7 张进、只留 5 张", e33.cards.length === 5 && e33.count === 5);
+check("留的是 Lv 最高的 5 张", e33.cards.map(c => c.level).sort((a, b) => b - a).join(",") === "90,88,71,65,55");
+check("去掉的 2 张记在 droppedCount", e33.droppedCount === 2);
+check("最高等级不受影响", e33.bestLv === 90);
+Gacha.addToCollection(s8, { id: 33, level: 20, hp: 120, atk: 60 });
+check("新抽 Lv 最低的卡直接被去掉", e33.cards.length === 5 && e33.cards.every(c => c.level !== 20) && e33.droppedCount === 3);
+Gacha.addToCollection(s8, { id: 33, level: 95, hp: 300, atk: 200 });
+check("新抽 Lv 最高的卡挤掉原来最低的", e33.cards.some(c => c.level === 95) && !e33.cards.some(c => c.level === 55) && e33.bestLv === 95);
+const s9 = Gacha.newState(0);
+s9.collection[4] = { count: 8, bestLv: 94, bestHp: 264, bestAtk: 190, legacy: 0,
+  cards: [94, 74, 69, 68, 68, 50, 40, 30].map(lv => ({ level: lv, hp: 200, atk: 100, pulledAt: 0 })) };
+check("enforceCap 去掉 3 张", Gacha.enforceCap(s9) === 3 && s9.collection[4].cards.length === 5 && s9.collection[4].count === 5);
+check("enforceCap 保留 Lv 最高的 5 张", s9.collection[4].cards.map(c => c.level).sort((a, b) => b - a).join(",") === "94,74,69,68,68");
+check("enforceCap 幂等", Gacha.enforceCap(s9) === 0);
+// 11. 旧卡补生成：v1.5 前的 8 张小火龙（只有汇总）→ 迁移后补 7 张，Lv 不超过原最高 94
+const s7 = Gacha.newState(0);
+s7.collection[4] = { count: 8, bestLv: 94, bestHp: 264, bestAtk: 190 };
+Gacha.migrateCollection(s7);
+check("迁移后 1 条明细 + 7 张 legacy", s7.collection[4].cards.length === 1 && s7.collection[4].legacy === 7);
+const seedVals = [0.1, 0.9, 0.5, 0.3, 0.7, 0.2, 0.8]; let si = 0;
+const seededRng = function () { return seedVals[si++ % seedVals.length]; };
+const repaired = Gacha.repairLegacyCards(s7, seededRng);
+const e4b = s7.collection[4];
+const row4 = Gacha.entry(4);
+check("补生成 7 张旧卡", repaired === 7 && e4b.cards.length === 8 && e4b.legacy === 0);
+check("补生成的卡 Lv 在最低等级～94 之间",
+  e4b.cards.filter(c => c.repaired).every(c => c.level >= row4[6] && c.level <= 94));
+check("补生成的卡 HP/攻击符合公式",
+  e4b.cards.filter(c => c.repaired).every(c =>
+    c.hp === Math.floor((2 * row4[7] + 93) * c.level / 100) + c.level + 10 &&
+    c.atk === Math.floor((2 * row4[8] + 93) * c.level / 100) + 5));
+check("最高等级仍是 94（补生成没超过原最高）", e4b.bestLv === 94 && e4b.cards.filter(c => c.level === 94).length === 1);
+check("补生成只跑一次", Gacha.repairLegacyCards(s7, seededRng) === 0);
+
 console.log(failures === 0 ? "\n全部通过 ✅" : "\n失败 " + failures + " 项 ❌");
 process.exit(failures === 0 ? 0 : 1);

@@ -1,4 +1,4 @@
-// PokeMem 网页端 v1.3 — UI 层（localStorage 存档，单机版，中英切换）
+// PokeMem 网页端 v1.7 — UI 层（localStorage 存档，单机版，中英切换）
 (function () {
   "use strict";
   var SAVE_KEY = "pokemem-save-v1";
@@ -202,22 +202,39 @@
     renderDetailCards(r, owned);
     $("detail-modal").classList.add("show");
   }
+  var detailSelected = null; // 左边 tab 当前选中的那张卡（对象引用，换宝可梦时自动重置）
   function renderDetailCards(r, owned) {
     var box = $("detail-cards");
-    if (!owned || !owned.cards || !owned.cards.length) { box.innerHTML = ""; return; }
-    var cards = owned.cards.slice();
+    if (!owned || !owned.cards || !owned.cards.length) { box.innerHTML = ""; detailSelected = null; return; }
+    // 先按 Lv 取最高的 5 张，再按当前排序键排 tab 顺序
+    var top = owned.cards.slice().sort(function (a, b) { return b.level - a.level; }).slice(0, 5);
     var key = detailSort.key, dir = detailSort.dir;
-    cards.sort(function (a, b) { return dir === "desc" ? b[key] - a[key] : a[key] - b[key]; });
+    top.sort(function (a, b) { return dir === "desc" ? b[key] - a[key] : a[key] - b[key]; });
+    if (!detailSelected || top.indexOf(detailSelected) < 0) detailSelected = top[0];
     var html = '<p class="detail-cards-title">' + t("cardsTitle", { n: owned.count }) + "</p>" +
       '<div class="sort-row"><span>' + t("sortLabel") + "：</span>" +
       sortBtn("level", "Lv") + sortBtn("hp", "HP") + sortBtn("atk", t("atkLabel")) + "</div>" +
-      '<table class="cards-table"><thead><tr><th>#</th><th>Lv</th><th>HP</th><th>' + t("atkLabel") + "</th></tr></thead><tbody>";
-    cards.forEach(function (c, i) {
-      html += "<tr><td>" + (i + 1) + "</td><td>" + c.level + "</td><td>" + c.hp + "</td><td>" + c.atk + "</td></tr>";
-    });
-    html += "</tbody></table>";
+      '<div class="detail-body"><div class="card-tabs">' +
+      top.map(function (c, i) {
+        return '<button class="card-tab' + (c === detailSelected ? " active" : "") + '" data-i="' + i + '">' +
+          "Lv." + c.level + "　HP " + c.hp + " · " + t("atkLabel") + " " + c.atk + "</button>";
+      }).join("") + "</div>" +
+      '<div class="card-detail">' +
+      '<div class="cd-stat"><span>Lv</span><b>' + detailSelected.level + "</b></div>" +
+      '<div class="cd-stat"><span>HP</span><b>' + detailSelected.hp + "</b></div>" +
+      '<div class="cd-stat"><span>' + t("atkLabel") + "</span><b>" + detailSelected.atk + "</b></div>" +
+      "</div></div>";
+    html += '<p class="rule">' + t("capNote") + "</p>";
+    var repairedN = owned.cards.filter(function (c) { return c.repaired; }).length;
+    if (repairedN > 0) html += '<p class="rule">' + t("repairedNote", { n: repairedN }) + "</p>";
     if (owned.legacy > 0) html += '<p class="rule">' + t("legacyNote", { n: owned.legacy }) + "</p>";
     box.innerHTML = html;
+    box.querySelectorAll(".card-tab").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        detailSelected = top[parseInt(btn.getAttribute("data-i"), 10)];
+        renderDetailCards(r, owned);
+      });
+    });
     box.querySelectorAll("[data-sort]").forEach(function (btn) {
       btn.addEventListener("click", function () {
         var k = btn.getAttribute("data-sort");
@@ -311,6 +328,8 @@
 
   // ---------- 启动 ----------
   Gacha.migrateCollection(state); // v1.5 前的旧存档只有汇总，补一条明细卡后保存
+  Gacha.repairLegacyCards(state, Math.random); // v1.7：旧卡按公式补生成数值（原始数值已无法找回），只跑一次
+  Gacha.enforceCap(state); // v1.8：每只最多保留 5 张卡，超过的按 Lv 从低到高去掉
   save();
   applyLang();
   tick();
