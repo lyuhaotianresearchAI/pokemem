@@ -76,7 +76,7 @@
       d.dataset.tier = c.tier;
       d.innerHTML =
         '<div class="card-inner">' +
-        '<div class="card-front"><div class="card-back">?</div></div>' +
+        '<div class="card-front"></div>' +
         '<div class="card-face">' +
         '<img src="' + imgUrl(c.id) + '" alt="' + cardName(c) + '" loading="lazy" onerror="this.style.display=\'none\'">' +
         '<div class="card-no">#' + String(c.id).padStart(3, "0") + '</div>' +

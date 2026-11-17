@@ -69,7 +69,11 @@ check("正文字体栈以可爱字体开头", css.includes('"Baloo 2", "ZCOOL Ku
 check("入册按钮文案是“入册 & 关闭”", i18nText.includes('入册 & 关闭') && i18nText.includes('Collect & Close'));
 check("入册按钮不再被白底样式盖掉（白字看得见）", css.includes(".overlay-actions button:not(.big-btn)"));
 check("卡背是真实高清贴图（base64 嵌在 CSS 里）", css.includes('url("data:image/jpeg;base64,'));
+check("卡背盒子比例跟图一致（734:1023），背景精确贴合", css.includes("aspect-ratio: 734 / 1023") && css.includes("/ 100% 100% no-repeat"));
 check("卡背不再是问号/CSS 手绘", !app.includes('<div class="card-back">?</div>') && !css.includes(".card-back-ball"));
+const homeJs = fs.readFileSync(__dirname + "/../js/home.js", "utf8");
+check("开包页也不再渲染问号占位", !homeJs.includes('<div class="card-back">?</div>') && homeJs.includes('<div class="card-front"></div>'));
+check("卡背没有定高裁切和白色内描边", !css.includes("min-height: 232px") && !css.includes("inset 0 0 0 3px"));
 
 console.log(failures === 0 ? "\n全部通过 ✅" : "\n失败 " + failures + " 项 ❌");
 process.exit(failures === 0 ? 0 : 1);
