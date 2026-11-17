@@ -68,8 +68,8 @@ check("页面加载可爱字体（Baloo 2 + 站酷快乐体）", html.includes("
 check("正文字体栈以可爱字体开头", css.includes('"Baloo 2", "ZCOOL KuaiLe"'));
 check("入册按钮文案是“入册 & 关闭”", i18nText.includes('入册 & 关闭') && i18nText.includes('Collect & Close'));
 check("入册按钮不再被白底样式盖掉（白字看得见）", css.includes(".overlay-actions button:not(.big-btn)"));
-check("卡背是经典宝可梦卡背（蓝底 + 中央宝可梦球 + 漩涡圈）", css.includes(".card-back-ball") && css.includes("@keyframes back-spin") && css.includes("#0a3d8f"));
-check("卡背不再是问号", !app.includes('<div class="card-back">?</div>'));
+check("卡背是真实高清贴图（base64 嵌在 CSS 里）", css.includes('url("data:image/jpeg;base64,'));
+check("卡背不再是问号/CSS 手绘", !app.includes('<div class="card-back">?</div>') && !css.includes(".card-back-ball"));
 
 console.log(failures === 0 ? "\n全部通过 ✅" : "\n失败 " + failures + " 项 ❌");
 process.exit(failures === 0 ? 0 : 1);
