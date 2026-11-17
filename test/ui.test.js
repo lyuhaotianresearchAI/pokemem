@@ -34,24 +34,26 @@ check("CSS 有 special-shake 类", css.includes(".pack-card.special-shake"));
 check("CSS 有标记颜色类", css.includes(".mark-gold") && css.includes(".mark-pink") && css.includes(".mark-black"));
 check("CSS 括号平衡", (css.match(/{/g) || []).length === (css.match(/}/g) || []).length);
 
-const app = fs.readFileSync(__dirname + "/../app.js", "utf8");
+// app.js 已拆成 js/ 模块（PR #3）：把 9 个模块拼起来，对它跑同一组检查
+const app = ["store", "util", "lang", "home", "dex", "rates", "tabs", "debug", "boot"]
+  .map(m => fs.readFileSync(__dirname + "/../js/" + m + ".js", "utf8")).join("\n");
 const markUses = (app.match(/mark\(/g) || []).length;
-check("app.js 在开包/卡册/详情/概率四处用标记", markUses >= 4, "用到 " + markUses + " 处");
-check("app.js 有震动触发函数", app.includes("shakeIfSpecial"));
+check("js/ 模块在开包/卡册/详情/概率四处用标记", markUses >= 4, "用到 " + markUses + " 处");
+check("js/ 模块有震动触发函数", app.includes("shakeIfSpecial"));
 check("震动只给 SSR/MR", app.includes('tier !== "SSR" && tier !== "MR"'));
 check("翻牌点击会震", app.includes("shakeIfSpecial(d, c.tier)"));
 check("全部翻开也会震", app.includes("shakeIfSpecial(el, el.dataset.tier)"));
 check("详情页有全部卡牌容器", fs.readFileSync(__dirname + "/../index.html", "utf8").includes('id="detail-cards"'));
-check("app.js 有详情卡牌列表渲染", app.includes("renderDetailCards"));
-check("app.js 有排序状态（Lv/HP/攻击）", app.includes('detailSort') && app.includes('"level"') && app.includes('"hp"') && app.includes('"atk"'));
-check("启动时迁移旧存档", app.includes("migrateCollection(state)"));
+check("js/ 模块有详情卡牌列表渲染", app.includes("renderDetailCards"));
+check("js/ 模块有排序状态（Lv/HP/攻击）", app.includes('detailSort') && app.includes('"level"') && app.includes('"hp"') && app.includes('"atk"'));
+check("启动时迁移旧存档", app.includes("migrateCollection(ctx.state)"));
 check("详情左侧是 tab 栏（每张卡一个 tab）", app.includes("card-tab") && app.includes("detailSelected"));
 check("tab 上限 5 张，取 Lv 最高", app.includes("slice(0, 5)") && app.includes("b.level - a.level"));
 check("详情页有上限提示（超过 5 张会被去掉）", app.includes("capNote"));
 check("详情页不再显示已去掉几张", !app.includes("droppedNote"));
-check("启动时执行上限", app.includes("enforceCap(state)"));
+check("启动时执行上限", app.includes("enforceCap(ctx.state)"));
 check("tab 一行平行放（Lv 不再加粗单独成行）", !app.includes('"<b>Lv."'));
-check("启动时补生成旧卡数值", app.includes("repairLegacyCards(state, Math.random)"));
+check("启动时补生成旧卡数值", app.includes("repairLegacyCards(ctx.state, Math.random)"));
 check("补生成的旧卡在详情页注明", app.includes("repairedNote") && app.includes("c.repaired"));
 const html = fs.readFileSync(__dirname + "/../index.html", "utf8");
 check("顶栏 logo 是精灵球（纯 CSS）", html.includes("pokeball-logo"));

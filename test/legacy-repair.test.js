@@ -1,7 +1,7 @@
 // PokeMem 旧卡补救真实路径验证：node test/legacy-repair.test.js
 // 复现用户截图里的情况：小火龙 #004 共 8 张，但存档是 v1.5 之前的——
 // 只有总数和最高数值（Lv94 / HP264 / 攻击190），没有每张卡的明细。
-// 跑真实的 app.js 启动流程后，点开它，详情页应该有 5 个 tab（Lv 最高的 5 张），
+// 跑真实的 js/ 模块启动流程后，点开它，详情页应该有 5 个 tab（Lv 最高的 5 张），
 // 且注明其中 4 张是补生成的（7 张里 3 张被上限去掉）、已去掉 3 张。
 const fs = require("fs");
 const vm = require("vm");
@@ -52,7 +52,16 @@ const Gacha = sandbox.Gacha;
 const state = Gacha.newState(1000000);
 state.collection[4] = { count: 8, bestLv: 94, bestHp: 264, bestAtk: 190 };
 sandbox.localStorage.setItem("pokemem-save-v1", JSON.stringify(state));
-run("app.js"); // 启动时迁移 + 补生成旧卡
+// app.js 已拆成 js/ 模块（PR #3），按 index.html 里的加载顺序跑；boot.js 启动时迁移 + 补生成旧卡
+run("js/store.js");
+run("js/util.js");
+run("js/lang.js");
+run("js/home.js");
+run("js/dex.js");
+run("js/rates.js");
+run("js/tabs.js");
+run("js/debug.js");
+run("js/boot.js");
 
 const grid = els["collection-grid"];
 grid.children[3].listeners.click[0](); // 第 4 只就是小火龙

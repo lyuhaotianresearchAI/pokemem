@@ -22,6 +22,13 @@
   var TRAINER_MAX_LEVEL = 100; // 训练师与单张宝可梦卡的等级上限都是 100
   var TRAINER_EXP_PER_LEVEL = 100; // 每升 1 级要 100 经验
   var TRAINER_WELCOME_CRYSTALS = 100; // 注册时一次性给 100 梦想结晶（= 10 包），只给一次
+  var CRYSTALS_PER_PACK = 10; // 10 梦想结晶换 1 包（Task 7）
+  // ---- 训练师经验（Task 2/3/6：2026-11-16 用户锁定）----
+  // 开包得经验：按抽到的卡的稀有度计，一包约 43 经验；满级 100 级共 9900 经验。
+  var TRAINER_EXP_TABLE = { N: 2, R: 4, SR: 8, SSR: 15, UR: 25, MR: 50 };
+  var TRAINER_CANDY_PER_LEVEL = 2; // 每升 1 级给 2 糖果（不给结晶）
+  // 里程碑：10 级给 3 个超级球，25 级给 3 个高级球（数量是实现时定的，可调）
+  var TRAINER_MILESTONE_REWARDS = { 10: { great_ball: 3 }, 25: { ultra_ball: 3 } };
   var ITEM_IDS = ["poke_ball", "great_ball", "ultra_ball",
     "fire_stone", "water_stone", "thunder_stone", "leaf_stone", "moon_stone"];
 
@@ -250,6 +257,49 @@
     return TRAINER_WELCOME_CRYSTALS;
   }
 
+  // 结晶兑换卡包（Task 7）：10 颗结晶换 1 包，计时器不受影响。
+  // 先结算计时器应发的包，再检查结晶余额——兑换和计时到账发生在同一次
+  // 同步调用里，顺序固定，两个包都加上（2026-11-16 定下的并发规则）。
+  // 余额不足返回 0，不扣结晶；成功扣 10 颗、包数 +1，返回 1。
+  // 整个过程同步完成，校验和扣减之间没有异步空隙。
+  function exchangeCrystalsForPack(state, now) {
+    if (typeof now !== "number" || !isFinite(now)) now = Date.now();
+    var t = ensureTrainer(state);
+    grantDuePacks(state, now); // 先结算计时器，再兑换
+    if (t.crystals < CRYSTALS_PER_PACK) return 0;
+    t.crystals -= CRYSTALS_PER_PACK;
+    state.packs += 1;
+    return 1;
+  }
+
+  // 训练师经验结算（Task 6）：加经验、逐级升级、发升级奖励。
+  // 每升 1 级给 2 糖果；到 10/25 级额外给里程碑精灵球；满级后经验清零、不再涨。
+  // 返回 { levels, candy, items }：本次升了几级、共发多少糖果、各道具发了几个。
+  // amount 非法（非数字/负数/NaN）按 0 处理；整个过程同步完成。
+  // 注意：迁移用的 ensureTrainer 只修数值、不发奖励，奖励只在这里发。
+  function addTrainerExp(state, amount) {
+    var result = { levels: 0, candy: 0, items: {} };
+    var t = ensureTrainer(state);
+    if (typeof amount !== "number" || !isFinite(amount)) amount = 0;
+    amount = Math.floor(amount);
+    if (amount <= 0 || t.level >= TRAINER_MAX_LEVEL) return result;
+    t.exp += amount;
+    while (t.exp >= TRAINER_EXP_PER_LEVEL && t.level < TRAINER_MAX_LEVEL) {
+      t.exp -= TRAINER_EXP_PER_LEVEL;
+      t.level += 1;
+      result.levels += 1;
+      result.candy += TRAINER_CANDY_PER_LEVEL;
+      t.candy += TRAINER_CANDY_PER_LEVEL;
+      var bonus = TRAINER_MILESTONE_REWARDS[t.level];
+      if (bonus) Object.keys(bonus).forEach(function (id) {
+        t.items[id] = (t.items[id] || 0) + bonus[id];
+        result.items[id] = (result.items[id] || 0) + bonus[id];
+      });
+    }
+    if (t.level >= TRAINER_MAX_LEVEL) t.exp = 0;
+    return result;
+  }
+
   // ---- 卡包计时（正式版）----
   function newState(now) {
     return { version: 2, packs: 1, lastGrantAt: now, collection: {}, totalDraws: 0,
@@ -279,8 +329,11 @@
 
   var api = { PACK_SIZE: PACK_SIZE, PACK_INTERVAL_MS: PACK_INTERVAL_MS, TIER_LABEL: TIER_LABEL,
     TRAINER_MAX_LEVEL: TRAINER_MAX_LEVEL, TRAINER_EXP_PER_LEVEL: TRAINER_EXP_PER_LEVEL,
-    TRAINER_WELCOME_CRYSTALS: TRAINER_WELCOME_CRYSTALS, ITEM_IDS: ITEM_IDS,
+    TRAINER_WELCOME_CRYSTALS: TRAINER_WELCOME_CRYSTALS, CRYSTALS_PER_PACK: CRYSTALS_PER_PACK,
+    TRAINER_EXP_TABLE: TRAINER_EXP_TABLE, TRAINER_CANDY_PER_LEVEL: TRAINER_CANDY_PER_LEVEL,
+    TRAINER_MILESTONE_REWARDS: TRAINER_MILESTONE_REWARDS, ITEM_IDS: ITEM_IDS,
     newTrainer: newTrainer, ensureTrainer: ensureTrainer, grantWelcomeCrystals: grantWelcomeCrystals,
+    exchangeCrystalsForPack: exchangeCrystalsForPack, addTrainerExp: addTrainerExp,
     SR_PLUS: SR_PLUS, SSR_PLUS: SSR_PLUS, entry: entry, totalWeight: totalWeight,
     drawFromPool: drawFromPool, drawAny: drawAny, rollStats: rollStats, drawCard: drawCard,
     drawPack: drawPack, newState: newState, grantDuePacks: grantDuePacks,

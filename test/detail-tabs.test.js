@@ -1,5 +1,5 @@
 // PokeMem 详情 tab 真实路径验证：node test/detail-tabs.test.js
-// 用最小 DOM 桩跑真实的 app.js：建一个 7 张卡的尼多力诺（Lv 71/40/90/65/55/88/30），
+// 用最小 DOM 桩跑真实的 js/ 模块（app.js 已在 PR #3 拆成 js/）：建一个 7 张卡的尼多力诺（Lv 71/40/90/65/55/88/30），
 // 点开卡册里的它，检查详情页左边是不是 5 个 tab、且是 Lv 最高的 5 张。
 const fs = require("fs");
 const vm = require("vm");
@@ -52,7 +52,16 @@ const state = Gacha.newState(1000000);
   Gacha.addToCollection(state, { id: 33, level: lv, hp: 100 + i, atk: 50 + i });
 });
 sandbox.localStorage.setItem("pokemem-save-v1", JSON.stringify(state));
-run("app.js");
+// app.js 已拆成 js/ 模块（PR #3），按 index.html 里的加载顺序跑
+run("js/store.js");
+run("js/util.js");
+run("js/lang.js");
+run("js/home.js");
+run("js/dex.js");
+run("js/rates.js");
+run("js/tabs.js");
+run("js/debug.js");
+run("js/boot.js"); // 启动：首次渲染（applyLang 会渲染卡册格子）
 
 // 卡册格子里第 33 只就是尼多力诺（151 只按编号顺序），点它
 const grid = els["collection-grid"];
