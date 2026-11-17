@@ -75,6 +75,8 @@ button { font-family: inherit; }
 .overlay-box h2 { margin: 4px 0; text-align: center; }
 .overlay-actions { display: flex; gap: 10px; margin-top: 12px; }
 .overlay-actions button { flex: 1; padding: 12px; border-radius: 10px; border: 1px solid #ccc; background: #fff; font-size: 15px; cursor: pointer; }
+/* 开包结果里的主按钮：.overlay-actions button 的白底优先级更高，会盖住 .big-btn 的红底，只剩白字看不见；单独把红底白字写回来 */
+.overlay-actions button.big-btn { background: #e3350d; color: #fff; border: none; }
 .detail-box { max-width: 420px; text-align: center; }
 .detail-box img { width: 220px; max-width: 80%; }
 #detail-meta, #detail-owned { font-size: 14px; color: #555; }
