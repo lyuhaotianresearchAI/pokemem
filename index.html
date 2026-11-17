@@ -136,6 +136,27 @@
       <p class="register-error" id="trainer-rename-error"></p>
     </div>
   </section>
+  <!-- 遭遇战页 -->
+  <section id="tab-encounter" class="tab-page">
+    <div id="encounter-picker">
+      <h3 data-i18n="encounterScenesTitle">选择场景</h3>
+      <div id="scene-list" class="scene-list"></div>
+      <h3 data-i18n="encounterTeamTitle">选择队伍</h3>
+      <p class="hint" id="team-pick-count"></p>
+      <div id="team-grid" class="dex-grid"></div>
+      <button id="encounter-start-btn" class="big-btn" data-i18n="encounterStartBtn">开始遭遇战</button>
+    </div>
+    <div id="encounter-status" style="display:none">
+      <div class="encounter-status-card">
+        <h3 data-i18n="encounterInProgress">遭遇战进行中</h3>
+        <p class="hint" id="encounter-status-scene"></p>
+        <p class="hint" id="encounter-status-wild"></p>
+        <p class="hint" id="encounter-status-wins"></p>
+        <button id="encounter-abandon-btn" class="big-btn" data-i18n="encounterAbandonBtn">放弃这场遭遇战</button>
+        <p class="rule" data-i18n="encounterAbandonNote">放弃等于中途离开，宝箱就没了</p>
+      </div>
+    </div>
+  </section>
 </main>
 
 <nav class="tabbar">
@@ -143,6 +164,7 @@
   <button data-tab="dex">📖 <span data-i18n="tabDex">卡册</span></button>
   <button data-tab="rates">📊 <span data-i18n="tabRates">概率</span></button>
   <button data-tab="trainer">👤 <span data-i18n="tabTrainer">训练师</span></button>
+  <button data-tab="encounter">⚔️ <span data-i18n="tabEncounter">遭遇战</span></button>
 </nav>
 
 <!-- 开包结果 -->
@@ -218,6 +240,7 @@
 <script src="js/types.js"></script>
 <script src="js/scenes.js"></script>
 <script src="js/encounter.js"></script>
+<script src="js/encounter-ui.js"></script>
 <script src="js/home.js"></script>
 <script src="js/dex.js"></script>
 <script src="js/rates.js"></script>

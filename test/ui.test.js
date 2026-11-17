@@ -158,5 +158,38 @@ check("问号会摇晃", css.includes("@keyframes q-wobble") && css.includes(".d
 check("详情页未拥有走剪影分支", dexJs.includes("detail-art") && dexJs.includes("var missing = !owned") && dexJs.includes('t("missingName")'));
 check("旧的纯文字 typeLabel 已删", !fs.readFileSync(__dirname + "/../js/lang.js", "utf8").includes("typeLabel") && !dexJs.includes("typeLabel"));
 
+// Task 27：遭遇战 tab + 场景列表 + 选队
+const encUiJs = fs.readFileSync(__dirname + "/../js/encounter-ui.js", "utf8");
+check("遭遇战是第 5 个页签（tabbar + tab-page）",
+  html.includes('data-tab="encounter"') && html.includes('id="tab-encounter"'));
+check("遭遇战页有场景列表、选队格子、开始按钮、进行中面板",
+  html.includes('id="scene-list"') && html.includes('id="team-grid"') &&
+  html.includes('id="encounter-start-btn"') && html.includes('id="encounter-status"') &&
+  html.includes('id="encounter-abandon-btn"'));
+check("遭遇战 UI 文件在 encounter 逻辑之后加载",
+  html.indexOf("js/encounter.js") < html.indexOf("js/encounter-ui.js"));
+check("切到遭遇战页签时渲染",
+  fs.readFileSync(__dirname + "/../js/tabs.js", "utf8").includes('tab === "encounter"') &&
+  fs.readFileSync(__dirname + "/../js/tabs.js", "utf8").includes("renderEncounter"));
+check("场景卡用 createElement 造按钮（测试桩能点）、未解锁灰掉点不动",
+  encUiJs.includes('document.createElement("button")') && encUiJs.includes('"scene-card"') &&
+  encUiJs.includes('"locked"') && encUiJs.includes("if (locked) return;"));
+check("场景卡有名字、属性图标、野生起始等级、解锁条件",
+  encUiJs.includes("sceneName") && encUiJs.includes("typeIconHtml") &&
+  encUiJs.includes("encounterBaseLevel") && encUiJs.includes("encounterUnlock"));
+check("选队格子每张卡一个格子、显示 Lv/HP/攻击/亲密度",
+  encUiJs.includes('"team-cell"') && encUiJs.includes("affectionLevel") &&
+  encUiJs.includes("encounterAffection"));
+check("选队最多 6 张、超了弹提示",
+  encUiJs.includes("picks.length >= 6") && encUiJs.includes("encounterTeamFull"));
+check("开始按钮没选队时禁用、开始后记进 ctx.encounter",
+  encUiJs.includes("teamPicks().length < 1") && encUiJs.includes("ctx.encounter = res.encounter"));
+check("进行中面板有场景、当前野生、已胜场数和放弃按钮",
+  encUiJs.includes("encounterCurrentScene") && encUiJs.includes("encounterCurrentWild") &&
+  encUiJs.includes("encounterCurrentWins") && encUiJs.includes("abandonRun"));
+check("场景卡与选队格子有样式（选中红框、未解锁变暗）",
+  css.includes(".scene-card") && css.includes(".scene-card.selected") && css.includes(".scene-card.locked") &&
+  css.includes(".team-cell.selected"));
+
 console.log(failures === 0 ? "\n全部通过 ✅" : "\n失败 " + failures + " 项 ❌");
 process.exit(failures === 0 ? 0 : 1);

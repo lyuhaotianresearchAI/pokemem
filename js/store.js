@@ -32,7 +32,10 @@
     filterOwned: "ALL",
     query: "",
     detailSort: { key: "level", dir: "desc" }, // 排序状态在不同宝可梦之间保留
-    detailSelected: null // 详情页左边 tab 当前选中的那张卡（对象引用，换宝可梦时自动重置）
+    detailSelected: null, // 详情页左边 tab 当前选中的那张卡（对象引用，换宝可梦时自动重置）
+    encounter: null, // 正在进行的遭遇战（内存里，不进存档；刷新页面就没了）
+    encounterScene: "grassland", // 遭遇战选中的场景
+    teamPicks: [] // 遭遇战选队：[{speciesId, cardIndex}]，最多 6 张
   };
   PokeMem.save = function () {
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(PokeMem.ctx.state)); } catch (e) {}

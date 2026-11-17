@@ -89,7 +89,25 @@ var I18N = {
     toastLevelUp: "🎉 训练师升到 Lv.{level}！",
     levelUpBtn: "升级（1 糖果）",
     detailCandy: "🍬 糖果：{n}",
-    levelUpToast: "🎉 {name} 升到 Lv.{level}！"
+    levelUpToast: "🎉 {name} 升到 Lv.{level}！",
+    tabEncounter: "遭遇战",
+    encounterScenesTitle: "选择场景",
+    encounterTeamTitle: "选择队伍",
+    encounterTeamCount: "已选 {n} / 6",
+    encounterStartBtn: "开始遭遇战",
+    encounterInProgress: "遭遇战进行中",
+    encounterUnlock: "训练家 Lv.{level} 解锁",
+    encounterBaseLevel: "野生 {level} 级起",
+    encounterStarted: "遭遇战开始！野生{name} Lv.{level} 出现了",
+    encounterTeamFull: "最多选 6 张卡",
+    encounterNeedTeam: "先选至少 1 张卡",
+    encounterStartFail: "开始失败，请重新选队",
+    encounterAffection: "亲密度 Lv.{level}",
+    encounterCurrentScene: "场景：{name}",
+    encounterCurrentWild: "当前野生：{name} Lv.{level}（HP {hp}/{hpMax}）",
+    encounterCurrentWins: "已胜 {n} 场",
+    encounterAbandonBtn: "放弃这场遭遇战",
+    encounterAbandonNote: "放弃等于中途离开，宝箱就没了"
   },
   en: {
     subtitle: "Pokémon 151 Gacha",
@@ -179,7 +197,25 @@ var I18N = {
     toastLevelUp: "🎉 Trainer reached Lv.{level}!",
     levelUpBtn: "Level up (1 Candy)",
     detailCandy: "🍬 Candy: {n}",
-    levelUpToast: "🎉 {name} reached Lv.{level}!"
+    levelUpToast: "🎉 {name} reached Lv.{level}!",
+    tabEncounter: "Encounter",
+    encounterScenesTitle: "Choose a scene",
+    encounterTeamTitle: "Choose your team",
+    encounterTeamCount: "Picked {n} / 6",
+    encounterStartBtn: "Start encounter",
+    encounterInProgress: "Encounter in progress",
+    encounterUnlock: "Requires Trainer Lv.{level}",
+    encounterBaseLevel: "Wild from Lv.{level}",
+    encounterStarted: "Encounter started! A wild {name} Lv.{level} appeared!",
+    encounterTeamFull: "Pick at most 6 cards",
+    encounterNeedTeam: "Pick at least 1 card first",
+    encounterStartFail: "Couldn't start — please re-pick your team",
+    encounterAffection: "Bond Lv.{level}",
+    encounterCurrentScene: "Scene: {name}",
+    encounterCurrentWild: "Current wild: {name} Lv.{level} (HP {hp}/{hpMax})",
+    encounterCurrentWins: "{n} wins so far",
+    encounterAbandonBtn: "Abandon this encounter",
+    encounterAbandonNote: "Abandoning is like leaving mid-run — the chest is lost"
   }
 };
 var TYPE_EN = { "草": "Grass", "毒": "Poison", "火": "Fire", "水": "Water", "虫": "Bug", "飞行": "Flying", "一般": "Normal", "电": "Electric", "地面": "Ground", "格斗": "Fighting", "超能力": "Psychic", "岩石": "Rock", "冰": "Ice", "幽灵": "Ghost", "龙": "Dragon" };

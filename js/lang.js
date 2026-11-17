@@ -20,6 +20,7 @@
     PokeMem.renderCollection();
     PokeMem.renderRates();
     PokeMem.renderTrainer();
+    PokeMem.renderEncounter();
     if (ctx.currentPack) PokeMem.renderPack();
     if (PokeMem.refreshDetail) PokeMem.refreshDetail(); // 详情浮层开着时也跟着语言刷新（Task 16）
   }

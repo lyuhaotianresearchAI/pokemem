@@ -10,7 +10,7 @@ const path = require("path");
 const GachaNode = require("../gacha.js"); // 仅用于造旧存档夹具
 
 const FILES = ["pokedex.js", "avatars.js", "i18n.js", "card-progress.js", "gacha.js", "js/store.js", "js/util.js",
-  "js/lang.js", "js/types.js", "js/scenes.js", "js/encounter.js", "js/home.js", "js/dex.js", "js/rates.js", "js/tabs.js",
+  "js/lang.js", "js/types.js", "js/scenes.js", "js/encounter.js", "js/encounter-ui.js", "js/home.js", "js/dex.js", "js/rates.js", "js/tabs.js",
   "js/debug.js", "js/register.js", "js/trainer.js", "js/boot.js"];
 
 let failures = 0;
@@ -135,8 +135,8 @@ function registerSelectors(doc) {
     Object.keys(attrs).forEach(function (k) { el.setAttribute(k, attrs[k]); });
     return el;
   }
-  doc._bySelector["[data-tab]"] = ["home", "dex", "rates", "trainer"].map(function (t) { return btn({ "data-tab": t }); });
-  doc._bySelector[".tab-page"] = ["home", "dex", "rates", "trainer"].map(function (t) {
+  doc._bySelector["[data-tab]"] = ["home", "dex", "rates", "trainer", "encounter"].map(function (t) { return btn({ "data-tab": t }); });
+  doc._bySelector[".tab-page"] = ["home", "dex", "rates", "trainer", "encounter"].map(function (t) {
     const s = makeEl(doc, "section"); s.id = "tab-" + t; return s;
   });
   doc._bySelector[".tab-page"][0].classList.add("active");
@@ -147,7 +147,9 @@ function registerSelectors(doc) {
   doc._bySelector["[data-add-candy]"] = ["10", "50", "100"].map(function (n) { return btn({ "data-add-candy": n }); });
   doc._bySelector["[data-i18n]"] = ["tabHome", "tabDex", "tabRates", "subtitle",
     "registerTitle", "registerDesc", "registerHint", "registerSubmit", "registerStart",
-    "tabTrainer", "trainerCrystals", "trainerCandy", "trainerItems", "trainerRenameBtn"].map(function (k) {
+    "tabTrainer", "trainerCrystals", "trainerCandy", "trainerItems", "trainerRenameBtn",
+    "tabEncounter", "encounterScenesTitle", "encounterTeamTitle", "encounterStartBtn",
+    "encounterInProgress", "encounterAbandonBtn", "encounterAbandonNote"].map(function (k) {
     const el = makeEl(doc, "span"); el.setAttribute("data-i18n", k); return el;
   });
   const ph = makeEl(doc, "input");
@@ -309,6 +311,40 @@ check("A 切概率页", A.doc._bySelector[".tab-page"][2].classList.contains("ac
 check("A 概率表有 MR 行", $A("rates-body").innerHTML.indexOf("MR") >= 0);
 byAttr(A.doc._bySelector["[data-tab]"], "data-tab", "dex").click();
 check("A 切回卡册页", A.doc._bySelector[".tab-page"][1].classList.contains("active"));
+
+// 遭遇战页：场景列表 + 选队 + 开始 + 放弃
+byAttr(A.doc._bySelector["[data-tab]"], "data-tab", "encounter").click();
+check("A 切遭遇战页", A.doc._bySelector[".tab-page"][4].classList.contains("active"));
+check("A 场景列表 9 张", $A("scene-list").children.length === 9, "实际 " + $A("scene-list").children.length);
+var sceneBtns = $A("scene-list").children;
+check("A 草丛已解锁、森林未解锁（训练家不到 5 级）",
+  !sceneBtns[0].classList.contains("locked") && sceneBtns[1].classList.contains("locked"));
+check("A 默认选中草丛", sceneBtns[0].classList.contains("selected"));
+sceneBtns[1].click();
+check("A 点未解锁场景不切换", sceneBtns[0].classList.contains("selected") && ctxA.encounterScene === "grassland");
+var teamTotal = 0;
+Object.keys(ctxA.state.collection).forEach(function (id) { teamTotal += ctxA.state.collection[id].cards.length; });
+check("A 选队格子 = 卡册里的卡数", $A("team-grid").children.length === teamTotal,
+  "实际 " + $A("team-grid").children.length + " / " + teamTotal);
+check("A 没选队时开始按钮禁用", $A("encounter-start-btn").disabled === true);
+var firstCell = $A("team-grid").children[0];
+firstCell.click();
+firstCell = $A("team-grid").children[0]; // 点选会重绘格子，重新取
+check("A 点一张入选、计数 1/6", firstCell.classList.contains("selected") &&
+  $A("team-pick-count").textContent.indexOf("1 / 6") >= 0, $A("team-pick-count").textContent);
+check("A 选了 1 张后开始按钮可用", $A("encounter-start-btn").disabled === false);
+firstCell.click();
+firstCell = $A("team-grid").children[0];
+check("A 再点一张取消选择", !firstCell.classList.contains("selected") &&
+  $A("team-pick-count").textContent.indexOf("0 / 6") >= 0);
+firstCell.click();
+$A("encounter-start-btn").click();
+check("A 开始遭遇战：ctx.encounter 在战斗阶段、有野生",
+  !!ctxA.encounter && ctxA.encounter.phase === "battle" && !!ctxA.encounter.wild);
+check("A 开始后显示进行中面板、选队区藏起",
+  $A("encounter-status").style.display !== "none" && $A("encounter-picker").style.display === "none");
+$A("encounter-abandon-btn").click();
+check("A 放弃后回到选队、遭遇战清掉", !ctxA.encounter && $A("encounter-picker").style.display !== "none");
 
 const search = $A("search-input");
 search.value = "皮卡";

@@ -168,6 +168,25 @@ button { font-family: inherit; }
 .trainer-item img { width: 28px; height: 28px; flex-shrink: 0; }
 .trainer-item-name { flex: 1; }
 .trainer-item.zero { opacity: .45; }
+/* 遭遇战页：场景卡、选队格子（Task 27） */
+.scene-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0; }
+.scene-card { background: #fff; border: 2px solid transparent; border-radius: 14px; padding: 10px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,.08); text-align: center; }
+.scene-card.selected { border-color: #e3350d; background: #fff0ec; }
+.scene-card.locked { opacity: .45; cursor: not-allowed; }
+.scene-name { font-size: 15px; font-weight: bold; color: #333; }
+.scene-types { display: flex; justify-content: center; gap: 4px; margin: 6px 0; }
+.scene-types .type-chip img { width: 22px; height: 22px; }
+.scene-base { font-size: 12px; color: #666; }
+.scene-lock { font-size: 12px; color: #e3350d; margin-top: 4px; }
+.team-cell { position: relative; background: #fff; border: 2px solid transparent; border-radius: 14px; padding: 6px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,.08); text-align: center; }
+.team-cell.selected { border-color: #e3350d; background: #fff0ec; }
+.team-cell img { width: 100%; aspect-ratio: 1; object-fit: contain; display: block; }
+.team-name { font-size: 13px; font-weight: bold; color: #333; }
+.team-stat { font-size: 12px; color: #666; }
+.team-affection { font-size: 12px; color: #e3350d; }
+.team-check { position: absolute; top: 4px; right: 8px; font-size: 16px; font-weight: bold; color: #e3350d; }
+.encounter-status-card { background: #fff; border-radius: 18px; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+.encounter-status-card h3 { margin: 4px 0 8px; text-align: center; }
 .trainer-rename { display: flex; gap: 8px; margin-top: 12px; }
 .trainer-rename input { flex: 1; min-width: 0; padding: 10px 16px; font-size: 15px; border: 1px solid #f0c9c0; border-radius: 999px; outline: none; }
 .trainer-rename input:focus { border-color: #ff8a75; box-shadow: 0 0 0 3px rgba(255,138,117,.25); }

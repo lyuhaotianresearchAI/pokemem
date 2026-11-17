@@ -9,6 +9,7 @@
       if (tab === "dex") PokeMem.renderCollection();
       if (tab === "rates") PokeMem.renderRates();
       if (tab === "trainer") PokeMem.renderTrainer();
+      if (tab === "encounter") PokeMem.renderEncounter();
     });
   });
 })();

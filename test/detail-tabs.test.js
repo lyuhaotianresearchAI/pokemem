@@ -12,8 +12,10 @@ function check(name, cond, detail) {
 
 function makeEl() {
   const el = {
-    children: [], style: {}, dataset: {}, listeners: {},
+    children: [], style: {}, dataset: {}, listeners: {}, attributes: {},
     classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } },
+    getAttribute(k) { return el.attributes[k] == null ? null : el.attributes[k]; },
+    setAttribute(k, v) { el.attributes[k] = String(v); },
     addEventListener(ev, fn) { (el.listeners[ev] = el.listeners[ev] || []).push(fn); },
     appendChild(c) { el.children.push(c); return c; },
     querySelectorAll() { return []; },
@@ -64,6 +66,7 @@ run("js/lang.js");
 run("js/types.js");
 run("js/scenes.js");
 run("js/encounter.js");
+run("js/encounter-ui.js");
 run("js/home.js");
 run("js/dex.js");
 run("js/rates.js");
