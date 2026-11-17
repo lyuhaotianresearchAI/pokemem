@@ -210,7 +210,7 @@ byAttr(A.doc._bySelector["[data-tab]"], "data-tab", "trainer").click();
 check("A 切训练师页", A.doc._bySelector[".tab-page"][3].classList.contains("active"));
 check("A 训练师页显示名字和 100 结晶",
   $A("trainer-name").textContent === "小智" && $A("trainer-crystals").textContent === "100");
-check("A 训练师页经验 0/100", $A("trainer-exp-text").textContent.indexOf("0") >= 0);
+check("A 训练师页经验 0/100", $A("trainer-exp-text").textContent === "经验 0 / 100", $A("trainer-exp-text").textContent);
 check("A 训练师页显示 3 个精灵球",
   $A("trainer-items").innerHTML.indexOf("精灵球") >= 0 && $A("trainer-items").innerHTML.indexOf("×3") >= 0);
 $A("trainer-rename-input").value = "";
@@ -247,10 +247,13 @@ check("A 加 5 包", ctxA.state.packs === 6, "实际 " + ctxA.state.packs);
 byAttr(A.doc._bySelector["[data-add-packs]"], "data-add-packs", "10").click();
 check("A 快捷 +10 包", ctxA.state.packs === 16, "实际 " + ctxA.state.packs);
 
+ctxA.state.trainer.exp = 90; // 这一包必定升级（90 + 至少 20 经验），验升级提示
 $A("open-pack-btn").click();
 check("A 开包 10 张", ctxA.currentPack && ctxA.currentPack.length === 10);
 check("A 开包扣 1 包", ctxA.state.packs === 15, "实际 " + ctxA.state.packs);
 check("A 开包浮层显示", $A("pack-overlay").classList.contains("show"));
+check("A 开包结果有训练师经验行", $A("pack-trainer").textContent.indexOf("经验") >= 0, $A("pack-trainer").textContent);
+check("A 开包升级弹出提示", $A("toast").classList.contains("show") && $A("toast").textContent.indexOf("Lv.") >= 0, $A("toast").textContent);
 check("A 包里 10 张卡已渲染", $A("pack-cards").children.length === 10);
 $A("pack-cards").children[0].click();
 check("A 点一张翻开", $A("pack-cards").children[0].classList.contains("flipped"));
@@ -284,6 +287,18 @@ check("A 清空搜索回 151 格", $A("collection-grid").children.length === 151
 
 $A("next-pack-now-btn").click();
 check("A 下一包立即到账", ctxA.state.packs === 16, "实际 " + ctxA.state.packs);
+check("A 首页显示 100 结晶、兑换按钮可用",
+  $A("crystal-count").textContent === "100" && $A("exchange-btn").disabled === false);
+$A("exchange-btn").click();
+check("A 兑换 10 结晶换 1 包", ctxA.state.packs === 17 && ctxA.state.trainer.crystals === 90,
+  "包 " + ctxA.state.packs + " 结晶 " + ctxA.state.trainer.crystals);
+ctxA.state.trainer.crystals = 5;
+A.PokeMem.renderHeader();
+check("A 结晶不够 10 时兑换按钮禁用", $A("exchange-btn").disabled === true);
+$A("exchange-btn").click();
+check("A 结晶不够时点兑换也没变化", ctxA.state.packs === 17 && ctxA.state.trainer.crystals === 5);
+ctxA.state.trainer.crystals = 90;
+A.PokeMem.renderHeader();
 
 $A("reset-save-btn").click();
 check("A 清空后回到 1 包", ctxA.state.packs === 1, "实际 " + ctxA.state.packs);
@@ -361,6 +376,24 @@ check("C 换卡后面板更新",
   boxC.innerHTML.indexOf("<b>" + C.PokeMem.ctx.detailSelected.level + "</b>") >= 0);
 C.doc.getElementById("detail-close").click();
 check("C 关闭详情", !C.doc.getElementById("detail-modal").classList.contains("show"));
+
+// ---------- 场景 D：开包结果的训练师行（确定性夹具，不依赖随机包） ----------
+const D = runApp({});
+const fakePack = [];
+for (let i = 0; i < 10; i++) fakePack.push({ id: 1, tier: "R", level: 50, hp: 151, atk: 100, name: "妙蛙种子", en: "Bulbasaur" });
+fakePack.trainerExp = { exp: 51, levels: 1, candy: 2, items: {} };
+fakePack.trainerCandyGained = 8;
+D.PokeMem.ctx.currentPack = fakePack;
+D.PokeMem.renderPack();
+check("D 训练师行三段全：经验 + 升级糖果 + 丢卡糖果",
+  D.doc.getElementById("pack-trainer").textContent === "训练师 +51 经验　·　升 1 级（+2 糖果）　·　超上限丢卡 +8 糖果",
+  D.doc.getElementById("pack-trainer").textContent);
+fakePack.trainerExp = { exp: 43, levels: 0, candy: 0, items: {} };
+fakePack.trainerCandyGained = 0;
+D.PokeMem.renderPack();
+check("D 没升级没丢卡：只有经验",
+  D.doc.getElementById("pack-trainer").textContent === "训练师 +43 经验",
+  D.doc.getElementById("pack-trainer").textContent);
 
 console.log(failures === 0 ? "ALL PASS" : failures + " FAILURES");
 process.exit(failures === 0 ? 0 : 1);

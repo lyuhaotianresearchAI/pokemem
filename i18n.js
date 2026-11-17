@@ -77,7 +77,13 @@ var I18N = {
     trainerLevel: "Lv.{level}",
     trainerExp: "经验 {exp} / 100",
     trainerExpMax: "已满级",
-    trainerNoName: "未注册"
+    trainerNoName: "未注册",
+    crystalLabel: "梦想结晶",
+    exchangeBtn: "换 1 包（10 颗）",
+    packTrainerExp: "训练师 +{exp} 经验",
+    packTrainerLevelUp: "升 {levels} 级（+{candy} 糖果）",
+    packTrainerDropCandy: "超上限丢卡 +{candy} 糖果",
+    toastLevelUp: "🎉 训练师升到 Lv.{level}！"
   },
   en: {
     subtitle: "Pokémon 151 Gacha",
@@ -155,7 +161,13 @@ var I18N = {
     trainerLevel: "Lv.{level}",
     trainerExp: "EXP {exp} / 100",
     trainerExpMax: "Max level",
-    trainerNoName: "Not registered"
+    trainerNoName: "Not registered",
+    crystalLabel: "Dream Crystals",
+    exchangeBtn: "Trade for 1 pack (10)",
+    packTrainerExp: "Trainer +{exp} EXP",
+    packTrainerLevelUp: "Level up ×{levels} (+{candy} Candy)",
+    packTrainerDropCandy: "Over-cap drops +{candy} Candy",
+    toastLevelUp: "🎉 Trainer reached Lv.{level}!"
   }
 };
 var TYPE_EN = { "草": "Grass", "毒": "Poison", "火": "Fire", "水": "Water", "虫": "Bug", "飞行": "Flying", "一般": "Normal", "电": "Electric", "地面": "Ground", "格斗": "Fighting", "超能力": "Psychic", "岩石": "Rock", "冰": "Ice", "幽灵": "Ghost", "龙": "Dragon" };

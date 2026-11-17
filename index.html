@@ -37,6 +37,10 @@
       <div class="stat"><div class="stat-num" id="total-draws">0</div><div class="stat-label" data-i18n="drawsLabel">总抽卡数</div></div>
     </div>
     <p class="hint" id="next-pack">下一包 --:--:--</p>
+    <div class="crystal-row">
+      <span>💎 <span data-i18n="crystalLabel">梦想结晶</span>：<b id="crystal-count">0</b></span>
+      <button id="exchange-btn" data-i18n="exchangeBtn">换 1 包（10 颗）</button>
+    </div>
     <p class="hint" id="since-ssr">再 50 抽保底 SSR+</p>
     <button id="open-pack-btn" class="big-btn">开一包（10 张）</button>
     <p class="rule" data-i18n="homeRule">正式版：每小时自动获得 1 包卡包 · 每包 10 张 · 10 连保底至少 1 张 SR 及以上 · 连续 50 抽未出 SSR 则下一抽必出 SSR+</p>
@@ -132,6 +136,7 @@
   <div class="overlay-box">
     <h2 data-i18n="packResult">开包结果</h2>
     <p class="hint" id="pack-summary"></p>
+    <p class="hint" id="pack-trainer"></p>
     <div id="pack-cards" class="pack-grid"></div>
     <div class="overlay-actions">
       <button id="flip-all-btn" data-i18n="flipAll">全部翻开</button>
@@ -170,6 +175,9 @@
     <button id="detail-close" class="big-btn" data-i18n="closeBtn">关闭</button>
   </div>
 </div>
+
+<!-- 轻提示 -->
+<div id="toast" class="toast"></div>
 
 <script src="pokedex.js"></script>
 <script src="i18n.js"></script>

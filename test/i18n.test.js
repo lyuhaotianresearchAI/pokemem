@@ -41,6 +41,11 @@ check("训练师页文案中英都有", trainerKeys.every(k => I18N.zh[k] && I18
 check("8 种道具都有中英名",
   Gacha.ITEM_IDS.every(id => ITEM_NAME[id] && ITEM_NAME[id].zh && ITEM_NAME[id].en), Gacha.ITEM_IDS.join(","));
 
+// 结晶/开包训练师行文案中英都有
+const crystalKeys = ["crystalLabel", "exchangeBtn", "packTrainerExp", "packTrainerLevelUp", "packTrainerDropCandy", "toastLevelUp"];
+check("结晶/开包训练师行文案中英都有", crystalKeys.every(k => I18N.zh[k] && I18N.en[k]), crystalKeys.join(","));
+check("升级提示占位符", i18nT("zh", "toastLevelUp", { level: 2 }).indexOf("Lv.2") >= 0);
+
 // 占位符替换
 check("占位符替换（中文）", i18nT("zh", "pityIn", { n: 12 }) === "再 12 抽保底 SSR+");
 check("占位符替换（英文）", i18nT("en", "pityIn", { n: 12 }) === "SSR+ guaranteed in 12 pulls");
