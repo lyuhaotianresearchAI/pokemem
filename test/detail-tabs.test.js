@@ -101,8 +101,11 @@ check("糖果 0 时按钮禁用", els["detail-levelup-btn"].disabled === true);
 els["detail-levelup-btn"].listeners.click[0]();
 check("糖果 0 时点升级也没变化", sandbox.PokeMem.ctx.detailSelected.level === 91 && vmState.trainer.candy === 0);
 vmState.trainer.candy = 5;
-sandbox.PokeMem.ctx.detailSelected.level = 100;
-cell.listeners.click[0]();
+sandbox.PokeMem.ctx.detailSelected.level = 99;
+cell.listeners.click[0](); // 重新打开详情刷新按钮状态（99 级可升级）
+check("99 级时按钮可用", els["detail-levelup-btn"].disabled === false);
+els["detail-levelup-btn"].listeners.click[0]();
+check("自然升到 100 级", sandbox.PokeMem.ctx.detailSelected.level === 100);
 check("满级时按钮禁用", els["detail-levelup-btn"].disabled === true);
 
 console.log(failures === 0 ? "\n全部通过 ✅" : "\n失败 " + failures + " 项 ❌");

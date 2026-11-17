@@ -3,6 +3,8 @@
 const { POKEDEX } = require("../pokedex.js");
 const { I18N, TYPE_EN, TIER_EN, ITEM_NAME, i18nT } = require("../i18n.js");
 const Gacha = require("../gacha.js");
+const fs = require("fs");
+const path = require("path");
 
 let failures = 0;
 function check(name, cond, detail) {
@@ -49,6 +51,17 @@ check("升级提示占位符", i18nT("zh", "toastLevelUp", { level: 2 }).indexOf
 // 糖果升级文案中英都有
 const levelUpKeys = ["levelUpBtn", "detailCandy", "levelUpToast"];
 check("糖果升级文案中英都有", levelUpKeys.every(k => I18N.zh[k] && I18N.en[k]), levelUpKeys.join(","));
+
+// 扫 index.html：所有 data-i18n / data-i18n-ph 用到的 key 都要在中英字典里
+const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf-8");
+const usedKeys = new Set();
+let m;
+const re1 = /data-i18n="([^"]+)"/g;
+while ((m = re1.exec(html))) usedKeys.add(m[1]);
+const re2 = /data-i18n-ph="([^"]+)"/g;
+while ((m = re2.exec(html))) usedKeys.add(m[1]);
+check("index.html 用到的文案 key 中英都有",
+  [...usedKeys].every(k => I18N.zh[k] && I18N.en[k]), [...usedKeys].join(","));
 
 // 占位符替换
 check("占位符替换（中文）", i18nT("zh", "pityIn", { n: 12 }) === "再 12 抽保底 SSR+");

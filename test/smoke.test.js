@@ -381,6 +381,14 @@ C.doc.getElementById("detail-levelup-btn").click();
 check("C 糖果升级 +1 级", selBefore.level === lvBefore + 1 && C.PokeMem.ctx.state.trainer.candy === 2,
   "Lv " + selBefore.level + " 糖果 " + C.PokeMem.ctx.state.trainer.candy);
 check("C 升级弹出提示", C.doc.getElementById("toast").classList.contains("show"));
+C.doc.getElementById("lang-en").click();
+check("C 切英文时详情浮层跟着刷新",
+  C.doc.getElementById("detail-modal").classList.contains("show") &&
+  C.doc.getElementById("detail-candy").textContent.indexOf("Candy") >= 0,
+  C.doc.getElementById("detail-candy").textContent);
+check("C 切英文后详情面板是英文", boxC.innerHTML.indexOf("ATK") >= 0);
+C.doc.getElementById("lang-zh").click();
+check("C 切回中文详情浮层跟着刷新", C.doc.getElementById("detail-candy").textContent.indexOf("糖果") >= 0);
 C.doc.getElementById("detail-close").click();
 check("C 关闭详情", !C.doc.getElementById("detail-modal").classList.contains("show"));
 

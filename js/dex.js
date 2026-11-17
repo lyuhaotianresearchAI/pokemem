@@ -130,7 +130,13 @@
   });
   $("search-input").addEventListener("input", function (e) { ctx.query = e.target.value; renderCollection(); });
 
+  // 切语言时重绘详情浮层（Task 16，PR #13 O1）：浮层开着时里面的名字/等级/糖果行也要跟着语言变
+  function refreshDetail() {
+    if (currentRow && $("detail-modal").classList.contains("show")) showDetail(currentRow);
+  }
+
   window.PokeMem = window.PokeMem || {};
   PokeMem.renderCollection = renderCollection;
   PokeMem.showDetail = showDetail;
+  PokeMem.refreshDetail = refreshDetail;
 })();
