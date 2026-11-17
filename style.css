@@ -55,8 +55,13 @@ button { font-family: inherit; }
 .card-inner { display: grid; width: 100%; transform-style: preserve-3d; transition: transform .45s; }
 .pack-card.flipped .card-inner { transform: rotateY(180deg); }
 .card-front, .card-face { grid-area: 1 / 1; backface-visibility: hidden; border-radius: 16px; overflow: hidden; }
-.card-front { background: linear-gradient(135deg, #e3350d, #ffcb05); display: flex; align-items: center; justify-content: center; min-height: 232px; box-shadow: inset 0 0 0 3px rgba(255,255,255,.35); }
-.card-back { font-size: 48px; color: #fff; font-weight: bold; text-shadow: 0 3px 6px rgba(0,0,0,.25); }
+.card-front { background: radial-gradient(circle at 50% 38%, #3b8fe8 0%, #1b62c0 48%, #0a3d8f 100%); display: flex; align-items: center; justify-content: center; min-height: 232px; position: relative; box-shadow: inset 0 0 0 3px rgba(255,255,255,.35); }
+/* 经典卡背：蓝色底 + 中央宝可梦球 + 后面两圈漩涡纹（外圈虚线慢慢转） */
+.card-front::before { content: ""; position: absolute; inset: 0; margin: auto; width: 170px; height: 170px; border-radius: 50%; border: 5px solid rgba(255,255,255,.28); box-shadow: 0 0 0 16px rgba(255,255,255,.07); }
+.card-front::after { content: ""; position: absolute; inset: 0; margin: auto; width: 210px; height: 210px; border-radius: 50%; border: 2px dashed rgba(255,255,255,.22); animation: back-spin 14s linear infinite; }
+.card-back-ball { width: 84px; height: 84px; flex-shrink: 0; border-radius: 50%; position: relative; z-index: 1; background: linear-gradient(to bottom, #ef3e36 0 46%, #222 46% 54%, #fff 54% 100%); border: 3px solid #222; box-shadow: 0 4px 10px rgba(0,0,0,.35), inset -4px -6px 8px rgba(0,0,0,.18); }
+.card-back-ball::before { content: ""; position: absolute; left: 14px; top: 10px; width: 24px; height: 14px; border-radius: 50%; background: rgba(255,255,255,.65); transform: rotate(-25deg); }
+.card-back-ball::after { content: ""; position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); width: 24px; height: 24px; background: #fff; border: 3px solid #222; border-radius: 50%; box-shadow: 0 0 0 3px rgba(255,255,255,.9); }
 .card-face { background: #fff; border: 3px solid var(--c); transform: rotateY(180deg); text-align: center; padding: 8px 4px; }
 .card-face img { width: 100%; max-height: 96px; object-fit: contain; }
 .card-no { font-size: 11px; color: #999; }
@@ -153,6 +158,7 @@ button { font-family: inherit; }
 @keyframes badge-bounce { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15) rotate(-4deg); } }
 @keyframes pop-in { from { transform: scale(.92) translateY(10px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
 @keyframes img-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+@keyframes back-spin { to { transform: rotate(360deg); } }
 
 /* Debug */
 .debug-panel { background: #fff8d6; border: 2px dashed #d4a017; border-radius: 12px; padding: 12px; margin-top: 16px; }

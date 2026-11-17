@@ -30,6 +30,7 @@
   // 里程碑：10 级给 3 个超级球，25 级给 3 个高级球（数量是实现时定的，可调）
   var TRAINER_MILESTONE_REWARDS = { 10: { great_ball: 3 }, 25: { ultra_ball: 3 } };
   var TRAINER_CANDY_TABLE = { N: 1, R: 2, SR: 4, SSR: 8, UR: 15, MR: 30 }; // 超上限丢卡换糖果（Task 9，用户锁定）
+  var CANDY_PER_LEVEL = 1; // 1 糖果升 1 级（Task 10，用户锁定）
   var ITEM_IDS = ["poke_ball", "great_ball", "ultra_ball",
     "fire_stone", "water_stone", "thunder_stone", "leaf_stone", "moon_stone"];
 
@@ -317,6 +318,37 @@
     return result;
   }
 
+  // 糖果给卡升级（Task 10）：1 糖果 +1 级，HP/攻击按公式重算，单卡最高 100 级。
+  // card 是卡册里那张卡的对象（详情页选中的那张）；levels 默认 1。
+  // 实际升的级数受三者限制：要升的级数、手头糖果、到 100 级的剩余；不够时按能升的升，
+  // 返回实际升了几级（0 表示没升：糖果不够、已满级、或卡不在卡册里）。扣掉的糖果 = 升的级数。
+  function levelUpCard(state, id, card, levels) {
+    if (typeof levels === "undefined") levels = 1;
+    if (typeof levels !== "number" || !isFinite(levels)) return 0;
+    levels = Math.floor(levels);
+    if (levels <= 0) return 0;
+    var t = ensureTrainer(state);
+    var e = state.collection[id];
+    if (!e || !e.cards) return 0;
+    var idx = e.cards.indexOf(card);
+    if (idx < 0) return 0;
+    if (!card || typeof card.level !== "number" || !isFinite(card.level)) return 0;
+    var row = entry(Number(id));
+    if (!row) return 0;
+    var gain = Math.min(levels, t.candy, TRAINER_MAX_LEVEL - card.level);
+    if (gain <= 0) return 0;
+    t.candy -= gain * CANDY_PER_LEVEL;
+    card.level += gain;
+    var st = statsForLevel(row, card.level);
+    card.hp = st.hp;
+    card.atk = st.atk;
+    // best 取最高等级那张卡的数值（平级时先达到的那张保持 best，和原来规则一致）
+    var best = e.cards[0];
+    e.cards.forEach(function (c) { if (c.level > best.level) best = c; });
+    e.bestLv = best.level; e.bestHp = best.hp; e.bestAtk = best.atk;
+    return gain;
+  }
+
   // ---- 卡包计时（正式版）----
   function newState(now) {
     return { version: 2, packs: 1, lastGrantAt: now, collection: {}, totalDraws: 0,
@@ -349,9 +381,10 @@
     TRAINER_WELCOME_CRYSTALS: TRAINER_WELCOME_CRYSTALS, CRYSTALS_PER_PACK: CRYSTALS_PER_PACK,
     TRAINER_EXP_TABLE: TRAINER_EXP_TABLE, TRAINER_CANDY_PER_LEVEL: TRAINER_CANDY_PER_LEVEL,
     TRAINER_MILESTONE_REWARDS: TRAINER_MILESTONE_REWARDS, TRAINER_CANDY_TABLE: TRAINER_CANDY_TABLE,
-    ITEM_IDS: ITEM_IDS,
+    CANDY_PER_LEVEL: CANDY_PER_LEVEL, ITEM_IDS: ITEM_IDS,
     newTrainer: newTrainer, ensureTrainer: ensureTrainer, grantWelcomeCrystals: grantWelcomeCrystals,
     exchangeCrystalsForPack: exchangeCrystalsForPack, addTrainerExp: addTrainerExp,
+    levelUpCard: levelUpCard,
     SR_PLUS: SR_PLUS, SSR_PLUS: SSR_PLUS, entry: entry, totalWeight: totalWeight,
     drawFromPool: drawFromPool, drawAny: drawAny, rollStats: rollStats, drawCard: drawCard,
     drawPack: drawPack, newState: newState, grantDuePacks: grantDuePacks,

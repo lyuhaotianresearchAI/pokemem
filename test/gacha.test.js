@@ -363,5 +363,51 @@ const cl = { packs: 1, collection: {} };
 [10, 20, 30, 40, 50, 60].forEach(lv => Gacha.addToCollection(cl, { id: 10, level: lv, hp: 100, atk: 50 }));
 check("没训练师的老存档：掉卡照样换糖果", cl.trainer && cl.trainer.candy === 1);
 
+// 17. 糖果给卡升级（Task 10）：1 糖果 +1 级，HP/攻击按公式重算，最高 100 级
+const lv0 = Gacha.newState(0); lv0.trainer.candy = 5;
+Gacha.addToCollection(lv0, { id: 1, level: 49, hp: 148, atk: 98 });
+const card49 = lv0.collection[1].cards[0];
+check("1 糖果升 1 级：Lv49→50，HP/攻击按公式重算",
+  Gacha.levelUpCard(lv0, 1, card49, 1) === 1 && card49.level === 50 && card49.hp === 151 && card49.atk === 100 && lv0.trainer.candy === 4);
+check("升级后 best 跟着变", lv0.collection[1].bestLv === 50 && lv0.collection[1].bestHp === 151);
+const lv1 = Gacha.newState(0); lv1.trainer.candy = 40;
+Gacha.addToCollection(lv1, { id: 1, level: 80, hp: 230, atk: 160 });
+Gacha.addToCollection(lv1, { id: 1, level: 50, hp: 151, atk: 100 });
+const card50 = lv1.collection[1].cards[1];
+check("一次升 3 级：Lv50→53，扣 3 糖果",
+  Gacha.levelUpCard(lv1, 1, card50, 3) === 3 && card50.level === 53 && lv1.trainer.candy === 37);
+check("没超过 best，best 不变", lv1.collection[1].bestLv === 80);
+check("再升 30 级超过 best：Lv53→83，best 跟着变",
+  Gacha.levelUpCard(lv1, 1, card50, 30) === 30 && card50.level === 83 &&
+  lv1.collection[1].bestLv === 83 && lv1.collection[1].bestHp === card50.hp);
+check("糖果扣够数", lv1.trainer.candy === 7);
+const lv2 = Gacha.newState(0); lv2.trainer.candy = 10;
+Gacha.addToCollection(lv2, { id: 1, level: 99, hp: 290, atk: 195 });
+const card99 = lv2.collection[1].cards[0];
+check("99 级升 5 级：只升 1 级到 100，扣 1 糖果",
+  Gacha.levelUpCard(lv2, 1, card99, 5) === 1 && card99.level === 100 && lv2.trainer.candy === 9);
+check("满级再升：返回 0、糖果不动",
+  Gacha.levelUpCard(lv2, 1, card99, 1) === 0 && lv2.trainer.candy === 9);
+const lv3 = Gacha.newState(0); lv3.trainer.candy = 0;
+Gacha.addToCollection(lv3, { id: 1, level: 50, hp: 151, atk: 100 });
+check("0 糖果升不了", Gacha.levelUpCard(lv3, 1, lv3.collection[1].cards[0], 1) === 0 && lv3.collection[1].cards[0].level === 50);
+const lv4 = Gacha.newState(0); lv4.trainer.candy = 2;
+Gacha.addToCollection(lv4, { id: 1, level: 50, hp: 151, atk: 100 });
+const card4 = lv4.collection[1].cards[0];
+check("要升 5 级只有 2 糖果：升 2 级，糖果归零",
+  Gacha.levelUpCard(lv4, 1, card4, 5) === 2 && card4.level === 52 && lv4.trainer.candy === 0);
+const lv5 = Gacha.newState(0); lv5.trainer.candy = 5;
+check("卡不在卡册里：返回 0、糖果不动",
+  Gacha.levelUpCard(lv5, 1, { level: 50, hp: 151, atk: 100 }, 1) === 0 && lv5.trainer.candy === 5);
+check("整只都没抽到：返回 0",
+  Gacha.levelUpCard(lv5, 25, { level: 50, hp: 151, atk: 100 }, 1) === 0);
+const lv6 = Gacha.newState(0); lv6.trainer.candy = 5;
+Gacha.addToCollection(lv6, { id: 1, level: 50, hp: 151, atk: 100 });
+const card6 = lv6.collection[1].cards[0];
+check("升 0 级/负数/NaN：返回 0、不动",
+  Gacha.levelUpCard(lv6, 1, card6, 0) === 0 && Gacha.levelUpCard(lv6, 1, card6, -3) === 0 &&
+  Gacha.levelUpCard(lv6, 1, card6, NaN) === 0 && card6.level === 50 && lv6.trainer.candy === 5);
+check("不传级数默认升 1 级", Gacha.levelUpCard(lv6, 1, card6) === 1 && card6.level === 51);
+
 console.log(failures === 0 ? "\n全部通过 ✅" : "\n失败 " + failures + " 项 ❌");
 process.exit(failures === 0 ? 0 : 1);
