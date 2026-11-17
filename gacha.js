@@ -32,7 +32,7 @@
   var TRAINER_MILESTONE_REWARDS = { 10: { great_ball: 3 }, 25: { ultra_ball: 3 } };
   var TRAINER_CANDY_TABLE = { N: 1, R: 2, SR: 4, SSR: 8, UR: 15, MR: 30 }; // 超上限丢卡换糖果（Task 9，用户锁定）
   var CANDY_PER_LEVEL = 1; // 1 糖果升 1 级（Task 10，用户锁定）
-  var ITEM_IDS = ["poke_ball", "great_ball", "ultra_ball",
+  var ITEM_IDS = ["poke_ball", "great_ball", "ultra_ball", "master_ball",
     "fire_stone", "water_stone", "thunder_stone", "leaf_stone", "moon_stone"];
 
   function entry(id) { return POKEDEX[id - 1]; }
@@ -219,7 +219,7 @@
   // grantWelcomeCrystals 一次性发放，避免老存档迁移时没注册就先拿到结晶，
   // 也避免注册流程重复发放。
   function freshItems() {
-    return { poke_ball: 3, great_ball: 0, ultra_ball: 0,
+    return { poke_ball: 3, great_ball: 0, ultra_ball: 0, master_ball: 0,
       fire_stone: 0, water_stone: 0, thunder_stone: 0, leaf_stone: 0, moon_stone: 0 };
   }
   function newTrainer() {

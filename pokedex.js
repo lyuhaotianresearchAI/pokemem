@@ -1,6 +1,8 @@
 // PokeMem 图鉴151 — 数据来源：Google Sheet「图鉴151」gid 449698901（2026-11-16 实测）
 // 格式：[编号, 中文名, 英文名, 属性, 稀有度, 表格单只概率%, 最低等级, HP种族值, 攻击种族值]
 // 图片：https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/{编号}.png（表格 G 列规律）
+// 图源常量：宝可梦官方图和道具图共用（Task 19 起，js/trainer.js 的 itemImg 也用它；域名变了只改这里）
+var SPRITE_BASE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/";
 // 表格单只概率合计 99.89%，抽卡时按权重归一化到 100%。档位合计：N 49.92% / R 30.03% / SR 14.88% / SSR 4.05% / UR 0.75% / MR 0.26%
 // 注意：表格第 14 行第二次读取时显示为“铁壳昆”，第一次读取与官方译名均为“铁壳蛹”，此处用铁壳蛹。
 const POKEDEX = [
@@ -81,8 +83,8 @@ const POKEDEX = [
 [149,"快龙","Dragonite","龙、飞行","SSR",0.27,55,91,134],[150,"超梦","Mewtwo","超能力","MR",0.13,5,106,110],
 [151,"梦幻","Mew","超能力","MR",0.13,5,100,100],
 ];
-function imgUrl(id){ return "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/" + id + ".png"; }
+function imgUrl(id){ return SPRITE_BASE + "pokemon/other/official-artwork/" + id + ".png"; }
 // 浏览器里顶层 const 不会挂到 window 上，gacha.js 靠 window.POKEDEX 拿不到数据，
 // 开包会在这里静默失败，所以必须显式挂上去。
-if (typeof window !== "undefined") { window.POKEDEX = POKEDEX; window.imgUrl = imgUrl; }
-if (typeof module !== "undefined") module.exports = { POKEDEX: POKEDEX, imgUrl: imgUrl };
+if (typeof window !== "undefined") { window.POKEDEX = POKEDEX; window.imgUrl = imgUrl; window.SPRITE_BASE = SPRITE_BASE; }
+if (typeof module !== "undefined") module.exports = { POKEDEX: POKEDEX, imgUrl: imgUrl, SPRITE_BASE: SPRITE_BASE };

@@ -152,6 +152,8 @@ check("新存档带训练师：1 级 0 经验", st0.trainer.level === 1 && st0.t
 check("新存档结晶 0、糖果 0、未注册", st0.trainer.crystals === 0 && st0.trainer.candy === 0 && st0.trainer.registered === false);
 check("新存档精灵球 3 个、其他道具 0",
   st0.trainer.items.poke_ball === 3 && Gacha.ITEM_IDS.filter(id => id !== "poke_ball").every(id => st0.trainer.items[id] === 0));
+check("道具目录 9 种，含大师球（Task 19，初始 0 个、无获得途径）",
+  Gacha.ITEM_IDS.length === 9 && Gacha.ITEM_IDS.indexOf("master_ball") >= 0 && st0.trainer.items.master_ball === 0);
 check("新存档 version 2", st0.version === 2);
 const legacy = { packs: 5, collection: { 25: { count: 1 } }, totalDraws: 10 };
 Gacha.ensureTrainer(legacy);

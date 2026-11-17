@@ -183,6 +183,7 @@ var ITEM_NAME = {
   poke_ball: { zh: "精灵球", en: "Poké Ball" },
   great_ball: { zh: "超级球", en: "Great Ball" },
   ultra_ball: { zh: "高级球", en: "Ultra Ball" },
+  master_ball: { zh: "大师球", en: "Master Ball" }, // Task 19：只进目录、初始 0 个，暂无获得途径（和其他道具一样先纯展示）
   fire_stone: { zh: "火之石", en: "Fire Stone" },
   water_stone: { zh: "水之石", en: "Water Stone" },
   thunder_stone: { zh: "雷之石", en: "Thunder Stone" },

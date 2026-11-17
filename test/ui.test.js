@@ -72,6 +72,15 @@ check("卡背是真实高清贴图（base64 嵌在 CSS 里）", css.includes('ur
 check("卡背盒子比例跟图一致（734:1023），背景精确贴合", css.includes("aspect-ratio: 734 / 1023") && css.includes("/ 100% 100% no-repeat"));
 check("卡背不再是问号/CSS 手绘", !app.includes('<div class="card-back">?</div>') && !css.includes(".card-back-ball"));
 const homeJs = fs.readFileSync(__dirname + "/../js/home.js", "utf8");
+const trainerJs = fs.readFileSync(__dirname + "/../js/trainer.js", "utf8");
+check("道具图和宝可梦图共用一个图源常量（pokedex.js 的 SPRITE_BASE）",
+  trainerJs.includes('SPRITE_BASE + "items/"') && trainerJs.includes('replace(/_/g, "-")'));
+const pokedexJs = fs.readFileSync(__dirname + "/../pokedex.js", "utf8");
+check("图源常量是 PokeAPI sprites 域名",
+  pokedexJs.includes('SPRITE_BASE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/"'));
+check("道具行渲染图标（加载失败时隐藏）",
+  trainerJs.includes("<img src=\"' + itemImg(id) + '\"") && trainerJs.includes("onerror=\"this.style.display=\\'none\\'\""));
+check("CSS 有道具图标尺寸和名称占位", css.includes(".trainer-item img") && css.includes("width: 28px") && css.includes(".trainer-item-name"));
 check("开包页也不再渲染问号占位", !homeJs.includes('<div class="card-back">?</div>') && homeJs.includes('<div class="card-front"></div>'));
 check("卡背没有定高裁切和白色内描边", !css.includes("min-height: 232px") && !css.includes("inset 0 0 0 3px"));
 check("CSS 有经验条轨道（高度+底色）", css.includes(".exp-bar") && css.includes("height: 10px"));
