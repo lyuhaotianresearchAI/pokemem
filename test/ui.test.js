@@ -162,10 +162,10 @@ check("旧的纯文字 typeLabel 已删", !fs.readFileSync(__dirname + "/../js/l
 const encUiJs = fs.readFileSync(__dirname + "/../js/encounter-ui.js", "utf8");
 check("遭遇战是第 5 个页签（tabbar + tab-page）",
   html.includes('data-tab="encounter"') && html.includes('id="tab-encounter"'));
-check("遭遇战页有场景列表、选队格子、开始按钮、进行中面板",
+check("遭遇战页有场景列表、选队格子、开始按钮、进行中容器",
   html.includes('id="scene-list"') && html.includes('id="team-grid"') &&
   html.includes('id="encounter-start-btn"') && html.includes('id="encounter-status"') &&
-  html.includes('id="encounter-abandon-btn"'));
+  html.includes('id="battle-screen"'));
 check("遭遇战 UI 文件在 encounter 逻辑之后加载",
   html.indexOf("js/encounter.js") < html.indexOf("js/encounter-ui.js"));
 check("切到遭遇战页签时渲染",
@@ -184,12 +184,47 @@ check("选队最多 6 张、超了弹提示",
   encUiJs.includes("picks.length >= 6") && encUiJs.includes("encounterTeamFull"));
 check("开始按钮没选队时禁用、开始后记进 ctx.encounter",
   encUiJs.includes("teamPicks().length < 1") && encUiJs.includes("ctx.encounter = res.encounter"));
-check("进行中面板有场景、当前野生、已胜场数和放弃按钮",
-  encUiJs.includes("encounterCurrentScene") && encUiJs.includes("encounterCurrentWild") &&
-  encUiJs.includes("encounterCurrentWins") && encUiJs.includes("abandonRun"));
+check("开始后记进 ctx.encounter、进行中显示战斗屏",
+  encUiJs.includes("ctx.encounter = res.encounter") && encUiJs.includes("renderBattle"));
 check("场景卡与选队格子有样式（选中红框、未解锁变暗）",
   css.includes(".scene-card") && css.includes(".scene-card.selected") && css.includes(".scene-card.locked") &&
   css.includes(".team-cell.selected"));
+
+// Task 28：战斗界面 + 战间选择 + 结算
+check("战斗屏有野生/我方面板（立绘、名字、HP 条）与一行战报",
+  html.includes('id="battle-screen"') && html.includes('id="battle-wild-img"') && html.includes('id="battle-wild-name"') &&
+  html.includes('id="battle-wild-hp-fill"') && html.includes('id="battle-wild-hp-text"') &&
+  html.includes('id="battle-mine-img"') && html.includes('id="battle-mine-name"') &&
+  html.includes('id="battle-mine-hp-fill"') && html.includes('id="battle-mine-hp-text"') &&
+  html.includes('id="battle-log"'));
+check("战斗屏有 4 个操作按钮 + 选球/交换子菜单容器",
+  html.includes('id="battle-attack-btn"') && html.includes('id="battle-switch-btn"') &&
+  html.includes('id="battle-item-btn"') && html.includes('id="battle-retreat-btn"') &&
+  html.includes('id="battle-ball-menu"') && html.includes('id="battle-switch-menu"'));
+check("战间选择弹窗有继续/结束 + 进度",
+  html.includes('id="battle-prompt"') && html.includes('id="battle-prompt-progress"') &&
+  html.includes('id="battle-continue-btn"') && html.includes('id="battle-end-btn"'));
+check("结算屏有击倒数、宝箱内容、返回按钮",
+  html.includes('id="battle-settle"') && html.includes('id="battle-settle-kos"') &&
+  html.includes('id="battle-settle-chest"') && html.includes('id="battle-settle-back-btn"'));
+check("战斗界面渲染野生/我方 HP 条与战报（抓捕失败优先于随后的反击行）",
+  encUiJs.includes("renderBattle") && encUiJs.includes("setHpBar") && encUiJs.includes("renderLog") &&
+  encUiJs.includes("battleLogCatchFail") && encUiJs.includes('prev.t === "catch"'));
+check("每次行动后保存存档（攻击/交换/选下一只/扔球/撤退/继续/结束都调 save）",
+  ["doAttack", "doSwitch", "pickNext", "throwBall", "doRetreat", "doContinue", "doEnd"].every(function (fn) {
+    var body = encUiJs.slice(encUiJs.indexOf("function " + fn));
+    body = body.slice(0, body.indexOf("\n  }\n") + 5);
+    return body.includes("PokeMem.save()");
+  }));
+check("切回遭遇战页签时同步队员最大 HP",
+  encUiJs.includes("refreshTeamMaxHp"));
+check("选球菜单只列 3 种球、按库存禁用",
+  encUiJs.includes('"poke_ball", "great_ball", "ultra_ball"') && encUiJs.includes("b.disabled = n <= 0"));
+check("详情页队员卡显示实时当前 HP / 最大 HP",
+  dexJs.includes("teamHpText") && dexJs.includes("m.card === card") && dexJs.includes("memberMaxHp"));
+check("战斗样式齐全（HP 条、红绿、操作按钮、子菜单）",
+  css.includes(".hp-bar") && css.includes(".hp-fill") && css.includes(".hp-fill.low") &&
+  css.includes(".battle-actions") && css.includes(".battle-menu") && css.includes(".battle-log"));
 
 console.log(failures === 0 ? "\n全部通过 ✅" : "\n失败 " + failures + " 项 ❌");
 process.exit(failures === 0 ? 0 : 1);

@@ -74,11 +74,11 @@
       '<div class="detail-body"><div class="card-tabs">' +
       top.map(function (c, i) {
         return '<button class="card-tab' + (c === ctx.detailSelected ? " active" : "") + '" data-i="' + i + '">' +
-          "Lv." + c.level + "　HP " + c.hp + " · " + t("atkLabel") + " " + c.atk + "</button>";
+          "Lv." + c.level + "　HP " + teamHpText(c) + " · " + t("atkLabel") + " " + c.atk + "</button>";
       }).join("") + "</div>" +
       '<div class="card-detail">' +
       '<div class="cd-stat"><span>Lv</span><b>' + ctx.detailSelected.level + "</b></div>" +
-      '<div class="cd-stat"><span>HP</span><b>' + ctx.detailSelected.hp + "</b></div>" +
+      '<div class="cd-stat"><span>HP</span><b>' + teamHpText(ctx.detailSelected) + "</b></div>" +
       '<div class="cd-stat"><span>' + t("atkLabel") + "</span><b>" + ctx.detailSelected.atk + "</b></div>" +
       "</div></div>";
     html += '<p class="rule">' + t("capNote") + "</p>";
@@ -112,6 +112,16 @@
   function sortBtn(key, label) {
     var arrow = ctx.detailSort.key === key ? (ctx.detailSort.dir === "desc" ? " ▼" : " ▲") : "";
     return '<button data-sort="' + key + '"' + (ctx.detailSort.key === key ? ' class="active"' : "") + ">" + label + arrow + "</button>";
+  }
+  // 遭遇战中队员的卡：显示实时当前 HP / 最大 HP（其他卡只显示最大 HP）
+  function teamHpText(card) {
+    var enc = ctx.encounter;
+    if (!enc || enc.phase === "done") return String(card.hp);
+    for (var i = 0; i < enc.team.length; i++) {
+      var m = enc.team[i];
+      if (m.card === card) return m.hp + "/" + PokeMem.Encounter.memberMaxHp(m);
+    }
+    return String(card.hp);
   }
   $("detail-close").addEventListener("click", function () { $("detail-modal").classList.remove("show"); });
   // 糖果升级：选中的卡 +1 级（1 糖果），成功后保存、弹提示、重绘详情（Task 15）

@@ -1,5 +1,5 @@
-// PokeMem — 遭遇战界面（Task 27）：场景列表 + 选队（战斗屏在 Task 28）
-// 场景卡和选队格子都用 createElement 造按钮（不用 innerHTML 字符串），
+// PokeMem — 遭遇战界面（Task 27 场景列表 + 选队；Task 28 战斗屏 + 战间选择 + 结算）
+// 场景卡、选队格子、选球/交换菜单都用 createElement 造按钮（不用 innerHTML 字符串），
 // 和头像选择器一个做法，测试桩也能点。
 (function () {
   "use strict";
@@ -26,11 +26,236 @@
 
   function renderEncounter() {
     var enc = ctx.encounter;
-    var active = enc && enc.phase !== "done";
-    $("encounter-picker").style.display = active ? "none" : "";
-    $("encounter-status").style.display = active ? "" : "none";
-    if (active) renderStatus(enc);
-    else { prunePicks(); renderScenes(); renderTeam(); updateStartBtn(); }
+    var hasRun = !!enc;
+    $("encounter-picker").style.display = hasRun ? "none" : "";
+    $("encounter-status").style.display = hasRun ? "" : "none";
+    if (!hasRun) { prunePicks(); renderScenes(); renderTeam(); updateStartBtn(); return; }
+    if (enc.phase === "done") {
+      $("battle-screen").style.display = "none";
+      $("battle-settle").style.display = "";
+      $("battle-prompt").classList.remove("show");
+      renderSettle(enc);
+      return;
+    }
+    $("battle-screen").style.display = "";
+    $("battle-settle").style.display = "none";
+    renderBattle(enc);
+    if (enc.phase === "prompt") {
+      $("battle-prompt-progress").textContent = t("battlePromptProgress", { kos: enc.kos, catches: enc.catches });
+      $("battle-prompt").classList.add("show");
+    } else {
+      $("battle-prompt").classList.remove("show");
+    }
+  }
+  // ---------- 战斗屏（Task 28） ----------
+  function battleName(obj) { return PokeMem.lang() === "en" ? (obj.en || obj.name) : obj.name; }
+  function setHpBar(fill, hp, hpMax) {
+    var pct = hpMax > 0 ? Math.max(0, Math.min(100, hp / hpMax * 100)) : 0;
+    fill.style.width = pct + "%";
+    fill.classList.toggle("low", pct < 25);
+  }
+  function renderBattle(enc) {
+    PokeMem.Encounter.refreshTeamMaxHp(enc); // 切回页签时同步最大 HP（糖果升级后）
+    var wild = enc.wild;
+    var active = PokeMem.Encounter.activeMember(enc);
+    if (wild) {
+      $("battle-wild-img").src = imgUrl(wild.id);
+      $("battle-wild-img").style.display = "";
+      $("battle-wild-name").textContent = "#" + String(wild.id).padStart(3, "0") + " " + battleName(wild) + "　Lv." + wild.level;
+      $("battle-wild-types").innerHTML = PokeMem.Types.parseTypes(wild.types).map(function (id) { return PokeMem.Types.typeChipHtml(id, PokeMem.lang()); }).join(" ") + "　" + PokeMem.mark(wild.tier) + " " + wild.tier;
+      setHpBar($("battle-wild-hp-fill"), wild.hp, wild.hpMax);
+      $("battle-wild-hp-text").textContent = "HP " + wild.hp + " / " + wild.hpMax;
+    } else {
+      $("battle-wild-img").style.display = "none";
+      $("battle-wild-name").textContent = "";
+      $("battle-wild-types").innerHTML = "";
+      setHpBar($("battle-wild-hp-fill"), 0, 1);
+      $("battle-wild-hp-text").textContent = "";
+    }
+    if (active) {
+      $("battle-mine-img").src = imgUrl(active.speciesId);
+      $("battle-mine-img").style.display = "";
+      $("battle-mine-name").textContent = "#" + String(active.speciesId).padStart(3, "0") + " " + battleName(active) + "　Lv." + active.card.level;
+      $("battle-mine-affection").textContent = t("battleAffection", { level: CardProgress.affectionLevel(active.card.affection), rate: CardProgress.critRateForCard(active.card) });
+      setHpBar($("battle-mine-hp-fill"), active.hp, PokeMem.Encounter.memberMaxHp(active));
+      $("battle-mine-hp-text").textContent = "HP " + active.hp + " / " + PokeMem.Encounter.memberMaxHp(active);
+      var need = CardProgress.cardExpNeeded(active.card.level);
+      $("battle-mine-exp").textContent = need > 0 ? t("battleExp", { exp: active.card.exp || 0, needed: need }) : t("battleExpMax");
+    } else {
+      $("battle-mine-img").style.display = "none";
+      $("battle-mine-name").textContent = "";
+      $("battle-mine-affection").textContent = "";
+      setHpBar($("battle-mine-hp-fill"), 0, 1);
+      $("battle-mine-hp-text").textContent = "";
+      $("battle-mine-exp").textContent = "";
+    }
+    renderLog(enc);
+    updateBattleButtons(enc);
+  }
+  // 战报只显示一行：从最新往回找，第一条战斗条目（spawn / hit / faint / ko / catch / levelup / switch）
+  function logName(e) { return PokeMem.lang() === "en" ? (e.nameEn || e.name) : e.name; }
+  function renderLog(enc) {
+    var line = "";
+    for (var i = enc.log.length - 1; i >= 0; i--) {
+      var e = enc.log[i];
+      if (e.t === "hit") {
+        // 扔球失败后野生必定反击：最新一条是 hit 时，优先显示它前面那条失败的抓捕
+        var prev = i > 0 ? enc.log[i - 1] : null;
+        if (prev && prev.t === "catch" && !prev.success) { line = t("battleLogCatchFail", { name: logName(prev) }); break; }
+        var atk = PokeMem.lang() === "en" ? (e.attackerEn || e.attacker) : e.attacker;
+        var def = PokeMem.lang() === "en" ? (e.defenderEn || e.defender) : e.defender;
+        line = t("battleLogHit", { attacker: atk, defender: def, damage: e.damage });
+        if (e.crit) line += " " + t("battleLogCrit");
+        if (e.mult === 0) line += " " + t("battleLogNoEffect");
+        else if (e.mult > 1) line += " " + t("battleLogSuper");
+        else if (e.mult < 1) line += " " + t("battleLogNotVery");
+        break;
+      }
+      if (e.t === "spawn") { line = t("battleLogSpawn", { name: logName(e), level: e.level }); break; }
+      if (e.t === "faint") { line = t("battleLogFaint", { name: logName(e) }); break; }
+      if (e.t === "ko") { line = t("battleLogKo", { name: logName(e) }); break; }
+      if (e.t === "catch") { line = e.success ? t("battleLogCatch", { name: logName(e) }) : t("battleLogCatchFail", { name: logName(e) }); break; }
+      if (e.t === "levelup") { line = t("battleLogLevelUp", { name: logName(e), level: e.to }); break; }
+      if (e.t === "switch") { line = t("battleLogSwitch", { name: logName(e) }); break; }
+    }
+    $("battle-log").textContent = line;
+  }
+  function updateBattleButtons(enc) {
+    var active = PokeMem.Encounter.activeMember(enc);
+    var inBattle = enc.phase === "battle" && !!enc.wild && !!active;
+    var needPick = !!enc.needsPick;
+    $("battle-attack-btn").disabled = !inBattle || needPick;
+    $("battle-switch-btn").disabled = !inBattle || needPick || PokeMem.Encounter.usableMembers(enc).length <= 1;
+    var tr = Gacha.ensureTrainer(ctx.state);
+    var balls = ["poke_ball", "great_ball", "ultra_ball"].reduce(function (n, id) { return n + ((tr.items && tr.items[id]) || 0); }, 0);
+    $("battle-item-btn").disabled = !inBattle || needPick || balls <= 0;
+    $("battle-retreat-btn").disabled = !inBattle;
+    if (needPick) renderSwitchMenu(enc, true);
+    else hideMenus();
+  }
+  function hideMenus() {
+    $("battle-ball-menu").style.display = "none";
+    $("battle-switch-menu").style.display = "none";
+  }
+  function toggleBallMenu() {
+    var menu = $("battle-ball-menu");
+    if (menu.style.display !== "none") { menu.style.display = "none"; return; }
+    renderBallMenu();
+    menu.style.display = "";
+    $("battle-switch-menu").style.display = "none";
+  }
+  function renderBallMenu() {
+    var menu = $("battle-ball-menu");
+    menu.innerHTML = "";
+    var tr = Gacha.ensureTrainer(ctx.state);
+    var title = document.createElement("div");
+    title.className = "battle-menu-title";
+    title.textContent = t("battleBallPick");
+    menu.appendChild(title);
+    ["poke_ball", "great_ball", "ultra_ball"].forEach(function (id) {
+      var n = (tr.items && tr.items[id]) || 0;
+      var b = document.createElement("button");
+      b.classList.add("ball-option");
+      b.disabled = n <= 0;
+      var nm = (ITEM_NAME[id] && ITEM_NAME[id][PokeMem.lang()]) || id;
+      b.textContent = nm + " ×" + n;
+      b.setAttribute("data-ball", id);
+      b.addEventListener("click", function () { throwBall(id); });
+      menu.appendChild(b);
+    });
+  }
+  function toggleSwitchMenu() {
+    var menu = $("battle-switch-menu");
+    if (menu.style.display !== "none") { menu.style.display = "none"; return; }
+    renderSwitchMenu(ctx.encounter, false);
+  }
+  function renderSwitchMenu(enc, forced) {
+    var menu = $("battle-switch-menu");
+    menu.innerHTML = "";
+    var title = document.createElement("div");
+    title.className = "battle-menu-title";
+    title.textContent = t(forced ? "battleNextPick" : "battleSwitchPick");
+    menu.appendChild(title);
+    enc.team.forEach(function (m, i) {
+      var b = document.createElement("button");
+      b.classList.add("switch-option");
+      var fainted = PokeMem.Encounter.isFainted(m);
+      b.disabled = fainted || i === enc.activeIndex;
+      b.textContent = battleName(m) + "　Lv." + m.card.level + "　HP " + m.hp + "/" + PokeMem.Encounter.memberMaxHp(m) + (fainted ? "（" + t("battleFainted") + "）" : "");
+      b.setAttribute("data-member", i);
+      b.addEventListener("click", function () { if (forced) pickNext(i); else doSwitch(i); });
+      menu.appendChild(b);
+    });
+    menu.style.display = "";
+  }
+  // 每次行动后都要调 PokeMem.save()（Task 28 检查项）：每轮结算的经验 / 亲密度 / 抓到的卡 / 球消耗立即写进存档，刷新不丢
+  function doAttack() {
+    var enc = ctx.encounter;
+    if (!enc) return;
+    if (!PokeMem.Encounter.attack(enc, ctx.state, Math.random).ok) return;
+    PokeMem.save();
+    renderEncounter();
+  }
+  function doSwitch(index) {
+    var enc = ctx.encounter;
+    if (!enc) return;
+    if (!PokeMem.Encounter.switchMember(enc, ctx.state, Math.random, index).ok) return;
+    PokeMem.save();
+    renderEncounter();
+  }
+  function pickNext(index) {
+    var enc = ctx.encounter;
+    if (!enc) return;
+    if (!PokeMem.Encounter.chooseNext(enc, index).ok) return;
+    PokeMem.save();
+    renderEncounter();
+  }
+  function throwBall(ballId) {
+    var enc = ctx.encounter;
+    if (!enc) return;
+    var res = PokeMem.Encounter.useBall(enc, ctx.state, Math.random, ballId);
+    if (!res.ok) {
+      if (res.error === "noBall") PokeMem.showToast(t("battleNoBall"));
+      renderEncounter();
+      return;
+    }
+    PokeMem.save();
+    renderEncounter();
+  }
+  function doRetreat() {
+    var enc = ctx.encounter;
+    if (!enc) return;
+    if (!PokeMem.Encounter.retreat(enc, ctx.state, Math.random).ok) return;
+    PokeMem.save();
+    renderEncounter();
+  }
+  function doContinue() {
+    var enc = ctx.encounter;
+    if (!enc) return;
+    if (!PokeMem.Encounter.continueRun(enc, ctx.state, Math.random).ok) return;
+    PokeMem.save();
+    renderEncounter();
+  }
+  function doEnd() {
+    var enc = ctx.encounter;
+    if (!enc) return;
+    if (!PokeMem.Encounter.endRun(enc, ctx.state, Math.random).ok) return;
+    PokeMem.save();
+    renderEncounter();
+  }
+  // 结算屏：本场击倒数 + 宝箱内容（结晶 / 道具）；返回后回到选队
+  function renderSettle(enc) {
+    $("battle-settle-kos").textContent = t("battleSettleKos", { kos: enc.kos, catches: enc.catches });
+    var chest = enc.chest || { crystals: 0, items: [] };
+    var chestText;
+    if (chest.crystals <= 0 && chest.items.length === 0) chestText = t("battleSettleEmpty");
+    else if (chest.items.length === 0) chestText = t("battleSettleChest", { crystals: chest.crystals });
+    else chestText = t("battleSettleChestItem", { crystals: chest.crystals, item: chest.items.map(function (id) { return (ITEM_NAME[id] && ITEM_NAME[id][PokeMem.lang()]) || id; }).join("、") });
+    $("battle-settle-chest").textContent = chestText;
+  }
+  function backToPicker() {
+    ctx.encounter = null;
+    renderEncounter();
   }
   // 场景卡：名字 + 属性图标 + 野生起始等级；未解锁的灰掉、点不动
   function renderScenes() {
@@ -139,25 +364,15 @@
     PokeMem.showToast(t("encounterStarted", { name: PokeMem.lang() === "en" ? w.en : w.name, level: w.level }));
     renderEncounter();
   }
-  // 进行中的遭遇战状态：场景、当前野生、已胜场数；放弃等于中途离开，宝箱就没了（和刷新页面一样）
-  function renderStatus(enc) {
-    var sc = PokeMem.Scenes.sceneById(enc.sceneId);
-    $("encounter-status-scene").textContent = t("encounterCurrentScene",
-      { name: sc ? PokeMem.Scenes.sceneName(sc.id, PokeMem.lang()) : "" });
-    var w = enc.wild;
-    $("encounter-status-wild").textContent = w
-      ? t("encounterCurrentWild", { name: PokeMem.lang() === "en" ? w.en : w.name, level: w.level, hp: w.hp, hpMax: w.hpMax })
-      : "";
-    $("encounter-status-wins").textContent = t("encounterCurrentWins", { n: enc.wins });
-  }
-  function abandonRun() {
-    ctx.encounter = null;
-    renderEncounter();
-  }
-
   window.PokeMem = window.PokeMem || {};
   PokeMem.renderEncounter = renderEncounter;
 
   $("encounter-start-btn").addEventListener("click", startRun);
-  $("encounter-abandon-btn").addEventListener("click", abandonRun);
+  $("battle-attack-btn").addEventListener("click", doAttack);
+  $("battle-switch-btn").addEventListener("click", toggleSwitchMenu);
+  $("battle-item-btn").addEventListener("click", toggleBallMenu);
+  $("battle-retreat-btn").addEventListener("click", doRetreat);
+  $("battle-continue-btn").addEventListener("click", doContinue);
+  $("battle-end-btn").addEventListener("click", doEnd);
+  $("battle-settle-back-btn").addEventListener("click", backToPicker);
 })();

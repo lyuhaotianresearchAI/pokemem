@@ -3,14 +3,14 @@
 // 状态放在调用方（浏览器里是 PokeMem.ctx.encounter），函数拿 (enc, state, rng) 操作它；
 // 调用方负责在每次行动后保存存档（PokeMem.save()），因为每轮结算的经验 / 亲密度 /
 // 抓到的卡要立即写进存档，刷新不丢；只有宝箱（结晶 / 道具）会因为中途刷新而丢。
-// 战报（enc.log，Task 28 的战斗界面按这个渲染）：
-//   {t:"spawn", id, name, level, tier}      刷出下一只野生
-//   {t:"hit", by:"player"|"wild", attacker, defender, damage, crit, mult, defHp, defHpMax}
-//   {t:"faint", name}                       出战卡倒下
-//   {t:"ko", name}                          野生被击倒
-//   {t:"catch", name, ball, success}        扔球结果
-//   {t:"switch", name}                      交换 / 免费选下一只
-//   {t:"levelup", name, from, to}           出战卡结算升了级
+// 战报（enc.log，Task 28 的战斗界面按这个渲染；带名字的条目同时记 nameEn / attackerEn / defenderEn，英文模式用英文名）：
+//   {t:"spawn", id, name, nameEn, level, tier}      刷出下一只野生
+//   {t:"hit", by:"player"|"wild", attacker, attackerEn, defender, defenderEn, damage, crit, mult, defHp, defHpMax}
+//   {t:"faint", name, nameEn}                       出战卡倒下
+//   {t:"ko", name, nameEn}                          野生被击倒
+//   {t:"catch", name, nameEn, ball, success}        扔球结果
+//   {t:"switch", name, nameEn}                      交换 / 免费选下一只
+//   {t:"levelup", name, nameEn, from, to}           出战卡结算升了级
 //   {t:"prompt"}                            进战间选择（继续前进 / 结束遭遇战）
 //   {t:"chest", crystals, items}            宝箱结算
 //   {t:"wipe"}                              6 只全倒下（团灭）
@@ -105,7 +105,7 @@
   function spawnNextWild(enc, rng) {
     enc.wild = Scenes.spawnWild(enc.sceneId, enc.wins, teamMaxLevel(enc), rng);
     if (!enc.wild) return null;
-    log(enc, { t: "spawn", id: enc.wild.id, name: enc.wild.name, level: enc.wild.level, tier: enc.wild.tier });
+    log(enc, { t: "spawn", id: enc.wild.id, name: enc.wild.name, nameEn: enc.wild.en, level: enc.wild.level, tier: enc.wild.tier });
     return enc.wild;
   }
   // 开一场遭遇战：场景必须已解锁（按训练家等级）；第一只野生按胜场 0 刷。
@@ -131,7 +131,7 @@
     var crit = rng() < enc.wild.critRate / 100;
     var dmg = calcDamage(enc.wild.atk, mult, crit);
     active.hp = Math.max(0, active.hp - dmg);
-    log(enc, { t: "hit", by: "wild", attacker: enc.wild.name, defender: active.name,
+    log(enc, { t: "hit", by: "wild", attacker: enc.wild.name, attackerEn: enc.wild.en, defender: active.name, defenderEn: active.en,
       damage: dmg, crit: crit, mult: mult, defHp: active.hp, defHpMax: memberMaxHp(active) });
     return isFainted(active);
   }
@@ -142,14 +142,14 @@
     var crit = rng() < CardProgress.critRateForCard(active.card) / 100;
     var dmg = calcDamage(active.card.atk, mult, crit);
     enc.wild.hp = Math.max(0, enc.wild.hp - dmg);
-    log(enc, { t: "hit", by: "player", attacker: active.name, defender: enc.wild.name,
+    log(enc, { t: "hit", by: "player", attacker: active.name, attackerEn: active.en, defender: enc.wild.name, defenderEn: enc.wild.en,
       damage: dmg, crit: crit, mult: mult, defHp: enc.wild.hp, defHpMax: enc.wild.hpMax });
     return enc.wild.hp <= 0;
   }
   // 出战卡倒下后的处理：还有能用的就等玩家免费选下一只，全倒了就团灭开宝箱
   function afterFaint(enc, state, rng, result) {
     var active = activeMember(enc);
-    log(enc, { t: "faint", name: active.name });
+    log(enc, { t: "faint", name: active.name, nameEn: active.en });
     if (usableMembers(enc).length === 0) {
       log(enc, { t: "wipe" });
       settleChest(enc, state, rng);
@@ -166,7 +166,7 @@
     var active = activeMember(enc);
     var wild = enc.wild;
     enc.wins += 1;
-    if (how === "ko") { enc.kos += 1; log(enc, { t: "ko", name: wild.name }); }
+    if (how === "ko") { enc.kos += 1; log(enc, { t: "ko", name: wild.name, nameEn: wild.en }); }
     var highLevel = wild.level > active.card.level;
     if (highLevel) enc.highLevelWins += 1;
     var levels = CardProgress.applyExpGain(state, active.speciesId, active.card,
@@ -174,7 +174,7 @@
     if (levels > 0) active.hpMax = active.card.hp; // 战斗结算升了级，最大 HP 跟着变，当前 HP 不变
     CardProgress.normalizeCardProgress(active.card);
     active.card.affection = (active.card.affection || 0) + 1;
-    if (levels > 0) log(enc, { t: "levelup", name: active.name, from: active.card.level - levels, to: active.card.level });
+    if (levels > 0) log(enc, { t: "levelup", name: active.name, nameEn: active.en, from: active.card.level - levels, to: active.card.level });
     enc.wild = null;
     enc.phase = "prompt";
     log(enc, { t: "prompt" });
@@ -210,7 +210,7 @@
     if (isFainted(target)) return { ok: false, error: "fainted" };
     var result = { ok: true, activeFainted: false, needsPick: false, wiped: false };
     enc.activeIndex = index;
-    log(enc, { t: "switch", name: target.name });
+    log(enc, { t: "switch", name: target.name, nameEn: target.en });
     if (enc.wild && enc.wild.hp > 0 && wildAttack(enc, rng)) afterFaint(enc, state, rng, result);
     return result;
   }
@@ -221,7 +221,7 @@
     if (!target || isFainted(target)) return { ok: false, error: "badTarget" };
     enc.activeIndex = index;
     enc.needsPick = false;
-    log(enc, { t: "switch", name: target.name });
+    log(enc, { t: "switch", name: target.name, nameEn: target.en });
     return { ok: true };
   }
   // 道具（选球扔球）：占用一回合；抓到 = 抽了一张卡（保留野生等级，直接进卡册，
@@ -238,7 +238,7 @@
     trainer.items[ballId] -= 1;
     var wild = enc.wild;
     var caught = rng() < catchRate(wild, ballId);
-    log(enc, { t: "catch", name: wild.name, ball: ballId, success: caught });
+    log(enc, { t: "catch", name: wild.name, nameEn: wild.en, ball: ballId, success: caught });
     if (caught) {
       // 抓到的稀有宝可梦按正常公式算 HP（野生的 ×2 / ×3 / ×5 不带走），暴击率按这张卡的亲密度（新卡 0%）
       Gacha.addToCollection(state, { id: wild.id, name: wild.name, en: wild.en, types: wild.types,

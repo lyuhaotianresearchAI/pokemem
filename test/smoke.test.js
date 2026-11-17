@@ -149,7 +149,8 @@ function registerSelectors(doc) {
     "registerTitle", "registerDesc", "registerHint", "registerSubmit", "registerStart",
     "tabTrainer", "trainerCrystals", "trainerCandy", "trainerItems", "trainerRenameBtn",
     "tabEncounter", "encounterScenesTitle", "encounterTeamTitle", "encounterStartBtn",
-    "encounterInProgress", "encounterAbandonBtn", "encounterAbandonNote"].map(function (k) {
+    "battleAttack", "battleSwitch", "battleItem", "battleRetreat",
+    "battleSettleTitle", "battleSettleBack", "battlePromptTitle", "battleContinue", "battleEnd"].map(function (k) {
     const el = makeEl(doc, "span"); el.setAttribute("data-i18n", k); return el;
   });
   const ph = makeEl(doc, "input");
@@ -328,6 +329,8 @@ check("A 选队格子 = 卡册里的卡数", $A("team-grid").children.length ===
   "实际 " + $A("team-grid").children.length + " / " + teamTotal);
 check("A 没选队时开始按钮禁用", $A("encounter-start-btn").disabled === true);
 var firstCell = $A("team-grid").children[0];
+var secondCell = $A("team-grid").children[1];
+var pickedSpecies = firstCell.getAttribute("data-species");
 firstCell.click();
 firstCell = $A("team-grid").children[0]; // 点选会重绘格子，重新取
 check("A 点一张入选、计数 1/6", firstCell.classList.contains("selected") &&
@@ -338,13 +341,80 @@ firstCell = $A("team-grid").children[0];
 check("A 再点一张取消选择", !firstCell.classList.contains("selected") &&
   $A("team-pick-count").textContent.indexOf("0 / 6") >= 0);
 firstCell.click();
+secondCell = $A("team-grid").children[1];
+secondCell.click();
+check("A 选 2 张、计数 2/6", $A("team-pick-count").textContent.indexOf("2 / 6") >= 0, $A("team-pick-count").textContent);
 $A("encounter-start-btn").click();
 check("A 开始遭遇战：ctx.encounter 在战斗阶段、有野生",
   !!ctxA.encounter && ctxA.encounter.phase === "battle" && !!ctxA.encounter.wild);
-check("A 开始后显示进行中面板、选队区藏起",
-  $A("encounter-status").style.display !== "none" && $A("encounter-picker").style.display === "none");
-$A("encounter-abandon-btn").click();
-check("A 放弃后回到选队、遭遇战清掉", !ctxA.encounter && $A("encounter-picker").style.display !== "none");
+check("A 开始后显示战斗屏、选队区藏起",
+  $A("battle-screen").style.display !== "none" && $A("encounter-picker").style.display === "none");
+check("A 战斗屏有野生名和双方 HP 条",
+  $A("battle-wild-name").textContent.length > 0 &&
+  $A("battle-wild-hp-text").textContent.indexOf("/") >= 0 &&
+  $A("battle-mine-hp-text").textContent.indexOf("/") >= 0);
+check("A 战斗 4 个按钮都在、攻击可用",
+  $A("battle-attack-btn").disabled === false && $A("battle-switch-btn").disabled === false &&
+  $A("battle-item-btn").disabled === false && $A("battle-retreat-btn").disabled === false);
+var wildHpBefore = ctxA.encounter.wild.hp;
+$A("battle-attack-btn").click();
+check("A 攻击后战报有字、野生掉了血或进了战间选择",
+  $A("battle-log").textContent.length > 0 &&
+  (ctxA.encounter.wild ? ctxA.encounter.wild.hp < wildHpBefore : ctxA.encounter.phase === "prompt"),
+  $A("battle-log").textContent);
+var switchedByForce = false;
+if (ctxA.encounter.needsPick) {
+  // 小概率：野生暴击把出战卡打倒了，强制菜单已打开，直接免费选下一只
+  $A("battle-switch-menu").children[2].click();
+  check("A 出战卡倒下后免费选下一只", ctxA.encounter.activeIndex === 1 && !ctxA.encounter.needsPick);
+  switchedByForce = true;
+}
+// 详情页：遭遇战中队员的卡显示实时当前 HP / 最大 HP
+var activeMember = ctxA.encounter.team[ctxA.encounter.activeIndex];
+byAttr(A.doc._bySelector["[data-tab]"], "data-tab", "dex").click();
+$A("collection-grid").children[pickedSpecies - 1].click();
+check("A 详情页队员卡显示当前 HP / 最大 HP",
+  $A("detail-cards").innerHTML.indexOf("HP " + activeMember.hp + "/" + A.PokeMem.Encounter.memberMaxHp(activeMember)) >= 0,
+  $A("detail-cards").innerHTML);
+$A("detail-close").click();
+byAttr(A.doc._bySelector["[data-tab]"], "data-tab", "encounter").click();
+check("A 切走再切回遭遇战、进行中的场次还在", !!ctxA.encounter && ctxA.encounter.phase !== "done");
+if (ctxA.encounter.phase === "prompt") {
+  $A("battle-continue-btn").click();
+  check("A 战间选继续前进、回到战斗", ctxA.encounter.phase === "battle" && !!ctxA.encounter.wild);
+}
+if (!switchedByForce) {
+  $A("battle-switch-btn").click();
+  check("A 点交换打开选队菜单", $A("battle-switch-menu").style.display !== "none" &&
+    $A("battle-switch-menu").children.length === 3, "实际 " + $A("battle-switch-menu").children.length);
+  $A("battle-switch-menu").children[2].click();
+  check("A 换上第二只", ctxA.encounter.activeIndex === 1, "实际 " + ctxA.encounter.activeIndex);
+} else {
+  check("A 倒下后只剩一只可用、交换按钮禁用", $A("battle-switch-btn").disabled === true);
+}
+$A("battle-item-btn").click();
+check("A 点道具打开选球菜单", $A("battle-ball-menu").style.display !== "none" &&
+  $A("battle-ball-menu").children.length === 4, "实际 " + $A("battle-ball-menu").children.length);
+var ballsBefore = ctxA.state.trainer.items.poke_ball;
+$A("battle-ball-menu").children[1].click();
+check("A 扔一个精灵球、球数 -1", ctxA.state.trainer.items.poke_ball === ballsBefore - 1,
+  "实际 " + ctxA.state.trainer.items.poke_ball);
+check("A 行动后存档已保存（球数进档）",
+  JSON.parse(A.sandbox.localStorage.getItem("pokemem-save-v1")).trainer.items.poke_ball === ballsBefore - 1);
+if (ctxA.encounter.phase === "prompt") {
+  $A("battle-continue-btn").click();
+  check("A 再选继续前进、回到战斗", ctxA.encounter.phase === "battle" && !!ctxA.encounter.wild);
+}
+$A("battle-retreat-btn").click();
+var chestA = ctxA.encounter.chest;
+check("A 撤退后显示结算屏、宝箱内容与实际一致", $A("battle-settle").style.display !== "none" &&
+  $A("battle-settle-kos").textContent.indexOf("击倒") >= 0 &&
+  (chestA.crystals > 0 ? $A("battle-settle-chest").textContent.indexOf(String(chestA.crystals)) >= 0
+    : $A("battle-settle-chest").textContent === "宝箱是空的"),
+  $A("battle-settle-chest").textContent);
+$A("battle-settle-back-btn").click();
+check("A 结算后返回选队、遭遇战清掉", !ctxA.encounter && $A("encounter-picker").style.display !== "none");
+ctxA.state.trainer.crystals = 100; // 撤退开的宝箱给了结晶，后面的兑换检查按注册送的 100 算
 
 const search = $A("search-input");
 search.value = "皮卡";

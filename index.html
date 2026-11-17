@@ -147,13 +147,54 @@
       <button id="encounter-start-btn" class="big-btn" data-i18n="encounterStartBtn">开始遭遇战</button>
     </div>
     <div id="encounter-status" style="display:none">
-      <div class="encounter-status-card">
-        <h3 data-i18n="encounterInProgress">遭遇战进行中</h3>
-        <p class="hint" id="encounter-status-scene"></p>
-        <p class="hint" id="encounter-status-wild"></p>
-        <p class="hint" id="encounter-status-wins"></p>
-        <button id="encounter-abandon-btn" class="big-btn" data-i18n="encounterAbandonBtn">放弃这场遭遇战</button>
-        <p class="rule" data-i18n="encounterAbandonNote">放弃等于中途离开，宝箱就没了</p>
+      <!-- 战斗屏 -->
+      <div id="battle-screen">
+        <div class="battle-panels">
+          <div class="battle-side battle-wild">
+            <img id="battle-wild-img" alt="">
+            <div class="battle-name" id="battle-wild-name"></div>
+            <div class="battle-types" id="battle-wild-types"></div>
+            <div class="hp-bar"><div id="battle-wild-hp-fill" class="hp-fill"></div></div>
+            <div class="battle-hp-text" id="battle-wild-hp-text"></div>
+          </div>
+          <div class="battle-side battle-mine">
+            <img id="battle-mine-img" alt="">
+            <div class="battle-name" id="battle-mine-name"></div>
+            <div class="battle-affection" id="battle-mine-affection"></div>
+            <div class="hp-bar"><div id="battle-mine-hp-fill" class="hp-fill"></div></div>
+            <div class="battle-hp-text" id="battle-mine-hp-text"></div>
+            <div class="battle-exp" id="battle-mine-exp"></div>
+          </div>
+        </div>
+        <p class="battle-log" id="battle-log"></p>
+        <div class="battle-actions">
+          <button id="battle-attack-btn" data-i18n="battleAttack">攻击</button>
+          <button id="battle-switch-btn" data-i18n="battleSwitch">交换</button>
+          <button id="battle-item-btn" data-i18n="battleItem">道具</button>
+          <button id="battle-retreat-btn" data-i18n="battleRetreat">撤退</button>
+        </div>
+        <div id="battle-ball-menu" class="battle-menu" style="display:none"></div>
+        <div id="battle-switch-menu" class="battle-menu" style="display:none"></div>
+      </div>
+      <!-- 结算屏 -->
+      <div id="battle-settle" style="display:none">
+        <div class="encounter-status-card">
+          <h3 data-i18n="battleSettleTitle">遭遇战结束</h3>
+          <p class="hint" id="battle-settle-kos"></p>
+          <p class="hint" id="battle-settle-chest"></p>
+          <button id="battle-settle-back-btn" class="big-btn" data-i18n="battleSettleBack">返回</button>
+        </div>
+      </div>
+      <!-- 战间选择弹窗（放在遭遇战页签里，切走 tab 就跟着藏起） -->
+      <div id="battle-prompt" class="overlay">
+        <div class="overlay-box">
+          <h2 data-i18n="battlePromptTitle">继续前进？</h2>
+          <p class="hint" id="battle-prompt-progress"></p>
+          <div class="overlay-actions">
+            <button id="battle-continue-btn" class="big-btn" data-i18n="battleContinue">继续前进</button>
+            <button id="battle-end-btn" data-i18n="battleEnd">结束遭遇战</button>
+          </div>
+        </div>
       </div>
     </div>
   </section>
