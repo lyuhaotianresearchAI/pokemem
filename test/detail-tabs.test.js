@@ -63,6 +63,7 @@ run("js/util.js");
 run("js/lang.js");
 run("js/types.js");
 run("js/scenes.js");
+run("js/encounter.js");
 run("js/home.js");
 run("js/dex.js");
 run("js/rates.js");

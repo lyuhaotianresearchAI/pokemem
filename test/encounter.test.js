@@ -1,0 +1,237 @@
+// PokeMem 遭遇战状态机验证：node test/encounter.test.js
+// 检查：组队、开场、伤害、先手、反击、交换、捕捉、结算、宝箱、撤退、战间选择
+const { POKEDEX } = require("../pokedex.js");
+const Gacha = require("../gacha.js");
+const Scenes = require("../js/scenes.js");
+const Encounter = require("../js/encounter.js");
+
+let failures = 0;
+function check(name, cond, detail) {
+  console.log((cond ? "PASS" : "FAIL") + "  " + name + (detail ? " — " + detail : ""));
+  if (!cond) failures++;
+}
+function makeState() { return Gacha.newState(1000000); }
+// 往卡册里塞一张指定等级的卡，返回它在 e.cards 里的下标
+function addCard(state, id, level) {
+  const row = POKEDEX[id - 1];
+  const st = Gacha.statsForLevel(row, level);
+  Gacha.addToCollection(state, { id, name: row[1], en: row[2], types: row[3], tier: row[4],
+    prob: row[5], level, hp: st.hp, atk: st.atk, exp: 0, affection: 0 });
+  return state.collection[id].cards.length - 1;
+}
+function setBalls(state, items) {
+  const t = Gacha.ensureTrainer(state);
+  Object.keys(items).forEach(k => { t.items[k] = items[k]; });
+}
+function noCrit() { return 0.99; } // 不暴击（野生暴击率最高 30% 也 roll 不中）
+
+// 1. 伤害公式：50 级攻击 100，打中性 33、×2 是 67、×4 是 133、×0 保底 1、暴击 ×2
+check("伤害：100 攻中性 33", Encounter.calcDamage(100, 1, false) === 33);
+check("伤害：×2 是 67", Encounter.calcDamage(100, 2, false) === 67);
+check("伤害：×4 是 133", Encounter.calcDamage(100, 4, false) === 133);
+check("伤害：×0 保底 1", Encounter.calcDamage(100, 0, false) === 1);
+check("伤害：暴击 ×2", Encounter.calcDamage(100, 1, true) === 66);
+
+// 2. 经验：弱或平级 +1，强 +等级差
+check("经验：平级 +1", Encounter.expGainFor(50, 50) === 1);
+check("经验：野生强 5 级 +5", Encounter.expGainFor(55, 50) === 5);
+check("经验：野生弱 +1", Encounter.expGainFor(40, 50) === 1);
+
+// 3. 抓捕概率：满血 N 精灵球 5% 封底、剩 20% 血高级球 90% 封顶、半血 MR 高级球 28%
+const wFull = { hp: 24, hpMax: 24, tier: "N" };
+const wLow = { hp: 5, hpMax: 24, tier: "N" };
+const wMR = { hp: 12, hpMax: 24, tier: "MR" };
+check("抓捕：满血 N 精灵球 5%", Encounter.catchRate(wFull, "poke_ball") === 0.05);
+check("抓捕：剩 20% 血 N 高级球 90%", Encounter.catchRate(wLow, "ultra_ball") === 0.9);
+check("抓捕：半血 MR 高级球 28%", Math.abs(Encounter.catchRate(wMR, "ultra_ball") - 0.28) < 1e-9);
+check("抓捕：非法球 0", Encounter.catchRate(wFull, "master_ball") === 0);
+
+// 4. 组队
+const s0 = makeState();
+check("组队：空队报错", Encounter.buildTeam(s0, []).error === "empty");
+check("组队：7 张报错",
+  Encounter.buildTeam(s0, Array.from({ length: 7 }, () => ({ speciesId: 1, cardIndex: 0 }))).error === "tooMany");
+check("组队：没这张卡报错", Encounter.buildTeam(s0, [{ speciesId: 1, cardIndex: 0 }]).error === "notOwned");
+const c0 = addCard(s0, 1, 50);
+const built = Encounter.buildTeam(s0, [{ speciesId: 1, cardIndex: c0 }]);
+check("组队：1 张合法，进场满血（当前 HP = 最大 HP）", built.ok && built.team.length === 1 &&
+  built.team[0].hp === built.team[0].card.hp && built.team[0].hpMax === built.team[0].card.hp &&
+  built.team[0].name === "妙蛙种子");
+check("组队：重复一张卡报错",
+  Encounter.buildTeam(s0, [{ speciesId: 1, cardIndex: c0 }, { speciesId: 1, cardIndex: c0 }]).error === "duplicate");
+
+// 5. 开场：坏场景、未解锁、正常
+const s1 = makeState();
+addCard(s1, 6, 50);
+check("开场：坏场景报错", Encounter.startEncounter(s1, "volcano", [{ speciesId: 6, cardIndex: 0 }], noCrit).error === "badScene");
+check("开场：森林未解锁（训练家 1 级）", Encounter.startEncounter(s1, "forest", [{ speciesId: 6, cardIndex: 0 }], noCrit).error === "locked");
+const st1 = Encounter.startEncounter(s1, "grassland", [{ speciesId: 6, cardIndex: 0 }], () => 0);
+check("开场：草丛第一只 = 绿毛虫 Lv 5",
+  st1.ok && st1.encounter.wild.id === 10 && st1.encounter.wild.level === 5 && st1.encounter.phase === "battle");
+Gacha.ensureTrainer(s1).level = 5;
+check("开场：训练家 5 级能进森林",
+  Encounter.startEncounter(s1, "forest", [{ speciesId: 6, cardIndex: 0 }], () => 0).ok === true);
+
+// 6. 攻击一击 KO：50 级喷火龙（火打虫 ×2，135 攻 → 90 伤）打 24 血绿毛虫
+const s2 = makeState();
+addCard(s2, 6, 50);
+const e2 = Encounter.startEncounter(s2, "grassland", [{ speciesId: 6, cardIndex: 0 }], () => 0).encounter;
+const r2 = Encounter.attack(e2, s2, noCrit);
+const hit2 = e2.log.find(l => l.t === "hit");
+check("攻击 KO：一次打 90（×2），野生倒下，进战间选择",
+  r2.ok && r2.wildFainted && r2.prompt && e2.phase === "prompt" && e2.wins === 1 && e2.kos === 1);
+check("攻击 KO：战报记了 90 点伤害、×2、不暴击",
+  hit2 && hit2.damage === 90 && hit2.mult === 2 && hit2.crit === false && hit2.defHp === 0);
+check("攻击 KO：出战卡 +1 经验、+1 亲密度",
+  e2.team[0].card.exp === 1 && e2.team[0].card.affection === 1);
+check("攻击 KO：宝箱还没结算", e2.chest === null);
+
+// 7. 先手 + 团灭：60 级快龙（221 攻）先攻打倒 5 级妙蛙种子和 5 级小火龙
+const s3 = makeState();
+addCard(s3, 1, 5);
+addCard(s3, 4, 5);
+const e3 = Encounter.startEncounter(s3, "grassland", [{ speciesId: 1, cardIndex: 0 }, { speciesId: 4, cardIndex: 0 }], () => 0).encounter;
+e3.wild = Scenes.makeWild(POKEDEX[148], 60); // 快龙 Lv 60
+const r3 = Encounter.attack(e3, s3, noCrit);
+check("先手：野生 60 级先攻，5 级妙蛙种子被打倒、等选下一只",
+  r3.ok && r3.activeFainted && r3.needsPick && !r3.prompt && e3.phase === "battle");
+check("先手：没选下一只时攻击报错", Encounter.attack(e3, s3, noCrit).error === "needPick");
+check("先手：免费选下一只（小火龙）", Encounter.chooseNext(e3, 1).ok && e3.activeIndex === 1 && !e3.needsPick);
+const r3b = Encounter.attack(e3, s3, noCrit);
+check("团灭：第二只也被打倒，遭遇战结束、开空宝箱",
+  r3b.wiped && e3.phase === "done" && e3.chest && e3.chest.crystals === 0 && e3.chest.items.length === 0);
+check("团灭：宝箱只结算一次（结晶还是 0）",
+  Encounter.settleChest(e3, s3, () => 0) === e3.chest && Gacha.ensureTrainer(s3).crystals === 0);
+
+// 8. 反击：50 级妙蛙花打 50 级卡比兽（532 血），一击 44，野生反击 54
+const s4 = makeState();
+addCard(s4, 3, 50);
+const e4 = Encounter.startEncounter(s4, "grassland", [{ speciesId: 3, cardIndex: 0 }], () => 0).encounter;
+e4.wild = Scenes.makeWild(POKEDEX[142], 50); // 卡比兽 SSR Lv 50，生命 ×2
+const hpBefore = e4.team[0].hp;
+Encounter.attack(e4, s4, noCrit);
+check("反击：野生剩 488 血（532−44）", e4.wild.hp === 488);
+check("反击：出战卡掉 54 血（186→132）", e4.team[0].hp === hpBefore - 54 && e4.team[0].hp === 132);
+check("反击：还在战斗阶段", e4.phase === "battle");
+
+// 9. 抓捕成功：残血绿毛虫 + 高级球，球消耗、卡进册、出战卡拿奖励
+const s5 = makeState();
+addCard(s5, 6, 50);
+setBalls(s5, { ultra_ball: 1 });
+const e5 = Encounter.startEncounter(s5, "grassland", [{ speciesId: 6, cardIndex: 0 }], () => 0).encounter;
+e5.wild.hp = 1;
+const r5 = Encounter.useBall(e5, s5, () => 0.5, "ultra_ball");
+check("抓捕成功：抓到、进战间选择、胜场 +1",
+  r5.ok && r5.caught && r5.prompt && e5.wins === 1 && e5.catches === 1);
+check("抓捕成功：卡进册（绿毛虫 Lv 5、经验 0、亲密度 0）",
+  s5.collection[10] && s5.collection[10].count === 1 && s5.collection[10].cards[0].level === 5 &&
+  s5.collection[10].cards[0].exp === 0 && s5.collection[10].cards[0].affection === 0);
+check("抓捕成功：高级球 1→0、出战卡 +1 经验 +1 亲密度",
+  Gacha.ensureTrainer(s5).items.ultra_ball === 0 && e5.team[0].card.exp === 1 && e5.team[0].card.affection === 1);
+
+// 10. 抓捕超上限：已有 5 只绿毛虫，再抓一只 5 级的，最弱的新抓变糖果
+const s6 = makeState();
+addCard(s6, 6, 50);
+[10, 20, 30, 40, 50].forEach(lv => addCard(s6, 10, lv));
+setBalls(s6, { ultra_ball: 1 });
+const e6 = Encounter.startEncounter(s6, "grassland", [{ speciesId: 6, cardIndex: 0 }], () => 0).encounter;
+e6.wild.hp = 1;
+const candyBefore = Gacha.ensureTrainer(s6).candy;
+Encounter.useBall(e6, s6, () => 0.5, "ultra_ball");
+check("抓捕超上限：还是 5 只、新抓的 5 级变 1 颗糖果",
+  s6.collection[10].count === 5 && s6.collection[10].cards.length === 5 &&
+  Gacha.ensureTrainer(s6).candy === candyBefore + 1 &&
+  s6.collection[10].cards.every(c => c.level >= 10));
+
+// 11. 抓捕失败：满血绿毛虫 + 精灵球，球消耗、野生反击打 1 点
+const s7 = makeState();
+addCard(s7, 6, 50);
+const e7 = Encounter.startEncounter(s7, "grassland", [{ speciesId: 6, cardIndex: 0 }], () => 0).encounter;
+const hp7 = e7.team[0].hp;
+const balls7 = Gacha.ensureTrainer(s7).items.poke_ball;
+const r7 = Encounter.useBall(e7, s7, () => 0.99, "poke_ball");
+check("抓捕失败：没抓到、精灵球 −1、野生反击打 1 点（虫打火/飞行 ×0.25）",
+  r7.ok && !r7.caught && Gacha.ensureTrainer(s7).items.poke_ball === balls7 - 1 && e7.team[0].hp === hp7 - 1);
+check("抓捕失败：没球时报错",
+  Encounter.useBall(e7, s7, () => 0.5, "ultra_ball").error === "noBall");
+
+// 12. 交换：换妙蛙花上场，野生反击打新上场的
+const s8 = makeState();
+addCard(s8, 6, 50);
+addCard(s8, 3, 50);
+const e8 = Encounter.startEncounter(s8, "grassland", [{ speciesId: 6, cardIndex: 0 }, { speciesId: 3, cardIndex: 0 }], () => 0).encounter;
+e8.wild = Scenes.makeWild(POKEDEX[142], 50);
+const r8 = Encounter.switchMember(e8, s8, noCrit, 1);
+check("交换：换成妙蛙花、野生反击打 54（186→132）",
+  r8.ok && e8.activeIndex === 1 && e8.team[1].hp === 132);
+check("交换：换同一只报错", Encounter.switchMember(e8, s8, noCrit, 1).error === "badTarget");
+
+// 13. 宝箱：击倒 3 + 高等级胜利 3 → 结晶 6；≥3 时 30% 出道具，≥5 时 60%
+function chestState(kos, hl) {
+  const s = makeState();
+  addCard(s, 6, 50);
+  const e = Encounter.startEncounter(s, "grassland", [{ speciesId: 6, cardIndex: 0 }], () => 0).encounter;
+  e.kos = kos; e.highLevelWins = hl;
+  return { s, e };
+}
+let c1 = chestState(3, 3);
+const ch1 = Encounter.settleChest(c1.e, c1.s, () => 0.2);
+check("宝箱：3 击倒 + 3 越级 = 6 结晶、roll 0.2 < 30% 得 1 道具",
+  ch1.crystals === 6 && ch1.items.length === 1 && Gacha.ensureTrainer(c1.s).crystals === 6);
+let c2 = chestState(3, 3);
+check("宝箱：roll 0.5 > 30% 没道具", Encounter.settleChest(c2.e, c2.s, () => 0.5).items.length === 0);
+let c3 = chestState(0, 5);
+check("宝箱：越级 5 时 roll 0.5 < 60% 得道具",
+  Encounter.settleChest(c3.e, c3.s, () => 0.5).items.length === 1);
+let c4 = chestState(0, 2);
+check("宝箱：越级 2 时不出道具（哪怕 rng 是 0）",
+  Encounter.settleChest(c4.e, c4.s, () => 0).items.length === 0 &&
+  Encounter.settleChest(c4.e, c4.s, () => 0).crystals === 2);
+check("宝箱：高等级抓到也算越级（不给基础结晶，只 +1）",
+  (function () { const c = chestState(0, 1); return Encounter.settleChest(c.e, c.s, () => 0.99).crystals === 1; })());
+
+// 14. 撤退：不挨打、按当前进度开宝箱
+const s9 = makeState();
+addCard(s9, 3, 50);
+const e9 = Encounter.startEncounter(s9, "grassland", [{ speciesId: 3, cardIndex: 0 }], () => 0).encounter;
+e9.wild = Scenes.makeWild(POKEDEX[142], 50);
+Encounter.attack(e9, s9, noCrit);
+const hp9 = e9.team[0].hp;
+const r9 = Encounter.retreat(e9, s9, noCrit);
+check("撤退：结束、宝箱 0 结晶、出战卡血量不变（野生没攻击）",
+  r9.ok && e9.phase === "done" && r9.chest.crystals === 0 && e9.team[0].hp === hp9);
+
+// 15. 战间选择：继续前进刷下一只（胜场 1 → 草丛 Lv 7）；结束开宝箱
+const s10 = makeState();
+addCard(s10, 6, 50);
+const e10 = Encounter.startEncounter(s10, "grassland", [{ speciesId: 6, cardIndex: 0 }], () => 0).encounter;
+Encounter.attack(e10, s10, noCrit); // KO，进 prompt
+check("战间：KO 后在 prompt 阶段", e10.phase === "prompt");
+const r10 = Encounter.continueRun(e10, s10, () => 0);
+check("继续前进：刷出下一只 Lv 7（基础 5 + 2×1）、回战斗阶段",
+  r10.ok && e10.wild.level === 7 && e10.phase === "battle");
+Encounter.attack(e10, s10, noCrit); // 再 KO 一只（Lv 7 绿毛虫，90 伤照样秒）
+const r10b = Encounter.endRun(e10, s10, noCrit);
+check("结束遭遇战：2 击倒 = 2 结晶", r10b.ok && r10b.chest.crystals === 2 && e10.phase === "done");
+
+// 16. 战斗结算升一级：50 级喷火龙 49/50 经验，打赢一只 +1 → 51 级、经验 0
+const s11 = makeState();
+const idx11 = addCard(s11, 6, 50);
+s11.collection[6].cards[idx11].exp = 49;
+const e11 = Encounter.startEncounter(s11, "grassland", [{ speciesId: 6, cardIndex: idx11 }], () => 0).encounter;
+Encounter.attack(e11, s11, noCrit);
+const card11 = s11.collection[6].cards[idx11];
+const st51 = Gacha.statsForLevel(POKEDEX[5], 51);
+check("结算升级：50 级 49 经验 +1 → 51 级、经验 0、HP/攻击按 51 级重算",
+  card11.level === 51 && card11.exp === 0 && card11.hp === st51.hp && card11.atk === st51.atk);
+check("结算升级：亲密度也 +1", card11.affection === 1);
+check("结算升级：队员最大 HP 跟着升到 51 级，当前 HP 不变（还是 184）",
+  e11.team[0].hpMax === st51.hp && e11.team[0].hp === 184);
+// 糖果升级的同步：直接改卡的最大 HP（模拟详情页喂糖果），刷一遍后队员最大 HP 跟上、当前 HP 不变
+card11.hp = st51.hp + 10;
+Encounter.refreshTeamMaxHp(e11);
+check("糖果升级同步：refreshTeamMaxHp 后最大 HP 跟上、当前 HP 不变",
+  e11.team[0].hpMax === st51.hp + 10 && e11.team[0].hp === 184);
+
+console.log(failures === 0 ? "\n全部通过 ✅" : "\n失败 " + failures + " 项 ❌");
+process.exit(failures === 0 ? 0 : 1);
