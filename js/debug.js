@@ -1,4 +1,4 @@
-// PokeMem — Debug 面板：加包、下一包立即到账、清空存档
+// PokeMem — Debug 面板：加包、加结晶、加糖果、下一包立即到账、清空存档
 (function () {
   "use strict";
   var $ = PokeMem.$;
@@ -21,6 +21,20 @@
     btn.addEventListener("click", function () {
       ctx.state.packs += parseInt(btn.getAttribute("data-add-packs"), 10);
       PokeMem.save(); PokeMem.renderHeader();
+    });
+  });
+  // 结晶：直接加到训练师身上，顶栏结晶数与兑换按钮状态随之刷新
+  document.querySelectorAll("[data-add-crystals]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      Gacha.ensureTrainer(ctx.state).crystals += parseInt(btn.getAttribute("data-add-crystals"), 10);
+      PokeMem.save(); PokeMem.renderHeader();
+    });
+  });
+  // 糖果：直接加到训练师身上，训练师页的糖果数随之刷新
+  document.querySelectorAll("[data-add-candy]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      Gacha.ensureTrainer(ctx.state).candy += parseInt(btn.getAttribute("data-add-candy"), 10);
+      PokeMem.save(); PokeMem.renderTrainer();
     });
   });
   $("next-pack-now-btn").addEventListener("click", function () {

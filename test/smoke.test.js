@@ -143,6 +143,8 @@ function registerSelectors(doc) {
   doc._bySelector["[data-tier-filter]"] = ["ALL", "MR", "UR", "SSR", "SR", "R", "N"].map(function (t) { return btn({ "data-tier-filter": t }); });
   doc._bySelector["[data-owned-filter]"] = ["ALL", "OWNED", "MISSING"].map(function (t) { return btn({ "data-owned-filter": t }); });
   doc._bySelector["[data-add-packs]"] = ["1", "10", "100"].map(function (n) { return btn({ "data-add-packs": n }); });
+  doc._bySelector["[data-add-crystals]"] = ["10", "100", "1000"].map(function (n) { return btn({ "data-add-crystals": n }); });
+  doc._bySelector["[data-add-candy]"] = ["10", "50", "100"].map(function (n) { return btn({ "data-add-candy": n }); });
   doc._bySelector["[data-i18n]"] = ["tabHome", "tabDex", "tabRates", "subtitle",
     "registerTitle", "registerDesc", "registerHint", "registerSubmit", "registerStart",
     "tabTrainer", "trainerCrystals", "trainerCandy", "trainerItems", "trainerRenameBtn"].map(function (k) {
@@ -299,6 +301,17 @@ $A("exchange-btn").click();
 check("A 结晶不够时点兑换也没变化", ctxA.state.packs === 17 && ctxA.state.trainer.crystals === 5);
 ctxA.state.trainer.crystals = 90;
 A.PokeMem.renderHeader();
+
+var crystalsBefore = ctxA.state.trainer.crystals;
+byAttr(A.doc._bySelector["[data-add-crystals]"], "data-add-crystals", "100").click();
+check("A Debug +100 结晶", ctxA.state.trainer.crystals === crystalsBefore + 100
+  && $A("crystal-count").textContent === String(crystalsBefore + 100),
+  "结晶 " + ctxA.state.trainer.crystals);
+var candyBefore = ctxA.state.trainer.candy;
+byAttr(A.doc._bySelector["[data-add-candy]"], "data-add-candy", "50").click();
+check("A Debug +50 糖果", ctxA.state.trainer.candy === candyBefore + 50
+  && $A("trainer-candy").textContent === String(candyBefore + 50),
+  "糖果 " + ctxA.state.trainer.candy);
 
 $A("reset-save-btn").click();
 check("A 清空后回到 1 包", ctxA.state.packs === 1, "实际 " + ctxA.state.packs);

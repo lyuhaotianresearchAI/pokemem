@@ -111,5 +111,16 @@ check("头像用 createElement 造按钮（测试桩可点）",
 check("非法头像回默认赤红（ensureTrainer 修 + avatarById 兜底，不靠不存在的文件）",
   trainerJs.includes("return AVATARS[0]") && !html.includes("assets/avatars/"));
 
+// Task 21：Debug 面板加结晶 / 加糖果
+const debugJs = fs.readFileSync(__dirname + "/../js/debug.js", "utf8");
+check("Debug 面板有加结晶按钮（+10/+100/+1000）",
+  html.includes('data-add-crystals="10"') && html.includes('data-add-crystals="100"') && html.includes('data-add-crystals="1000"'));
+check("Debug 面板有加糖果按钮（+10/+50/+100）",
+  html.includes('data-add-candy="10"') && html.includes('data-add-candy="50"') && html.includes('data-add-candy="100"'));
+check("Debug 加结晶改训练师结晶并刷新顶栏",
+  debugJs.includes("[data-add-crystals]") && debugJs.includes(".crystals +=") && debugJs.includes("renderHeader"));
+check("Debug 加糖果改训练师糖果并刷新训练师页",
+  debugJs.includes("[data-add-candy]") && debugJs.includes(".candy +=") && debugJs.includes("renderTrainer"));
+
 console.log(failures === 0 ? "\n全部通过 ✅" : "\n失败 " + failures + " 项 ❌");
 process.exit(failures === 0 ? 0 : 1);
