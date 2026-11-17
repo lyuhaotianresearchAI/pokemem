@@ -14,6 +14,7 @@
   if (!POKEDEX.length) throw new Error("PokeMem: 图鉴数据未加载，请确认 pokedex.js 在 gacha.js 之前引入");
   var PACK_SIZE = 10;
   var PACK_INTERVAL_MS = 3600 * 1000; // 正式版：1 小时 1 包
+  var MAX_CARDS_PER_MON = 5; // 每只宝可梦最多保留 5 张卡，超过的去掉 Lv 最低的
   var SSR_PLUS = ["SSR", "UR", "MR"];
   var SR_PLUS = ["SR", "SSR", "UR", "MR"];
   var TIER_LABEL = { N: "普通", R: "稀有", SR: "超稀有", SSR: "传说", UR: "神话", MR: "幻之" };
@@ -46,12 +47,14 @@
   }
 
   // 等级与数值（文档第 4 节 / 表格“等级公式”页，满个体 15、努力拉满，93 = 2*15+63）
+  function statsForLevel(row, lv) {
+    return { level: lv,
+      hp: Math.floor((2 * row[7] + 93) * lv / 100) + lv + 10,
+      atk: Math.floor((2 * row[8] + 93) * lv / 100) + 5 };
+  }
   function rollStats(row, rng) {
-    var minLv = row[6], hpBase = row[7], atkBase = row[8];
-    var lv = randInt(minLv, 100, rng);
-    var hp = Math.floor((2 * hpBase + 93) * lv / 100) + lv + 10;
-    var atk = Math.floor((2 * atkBase + 93) * lv / 100) + 5;
-    return { level: lv, hp: hp, atk: atk };
+    var lv = randInt(row[6], 100, rng);
+    return statsForLevel(row, lv);
   }
 
   // 抽一张：处理 50 抽 SSR 保底；更新并返回新的 sinceSSR
@@ -85,6 +88,28 @@
     e.cards.push({ level: card.level, hp: card.hp, atk: card.atk, pulledAt: Date.now() });
     e.count += 1;
     if (card.level > e.bestLv) { e.bestLv = card.level; e.bestHp = card.hp; e.bestAtk = card.atk; }
+    dropLowest(e); // 超过 5 张就去掉 Lv 最低的一张（新抽到的 Lv 最低时，去掉的就是它自己）
+  }
+
+  // 去掉 Lv 最低的一张卡（只在超过上限时）；返回是否去掉了一张
+  function dropLowest(e) {
+    if (!e.cards || e.cards.length <= MAX_CARDS_PER_MON) return false;
+    var minI = 0;
+    for (var i = 1; i < e.cards.length; i++) if (e.cards[i].level < e.cards[minI].level) minI = i;
+    e.cards.splice(minI, 1);
+    e.count -= 1;
+    e.droppedCount = (e.droppedCount || 0) + 1;
+    return true;
+  }
+
+  // 给已有存档执行上限：每只超过 5 张的部分按 Lv 从低到高去掉
+  function enforceCap(state) {
+    var removed = 0;
+    Object.keys(state.collection).forEach(function (id) {
+      var e = state.collection[id];
+      while (dropLowest(e)) removed++;
+    });
+    return removed;
   }
 
   // v1.5 之前只存了汇总（count/bestLv/bestHp/bestAtk），没有每张卡的明细：
@@ -98,6 +123,29 @@
       }
       if (typeof e.legacy !== "number") e.legacy = 0;
     });
+  }
+
+  // v1.7 补救：v1.5 之前抽的旧卡只有总数，没有每张的 Lv/HP/攻击，原始数值已无法找回。
+  // 为了让详情页的 tab 能显示（上限 5 张、取 Lv 最高），按公式给旧卡重新随机生成数值：
+  // 等级在最低等级～原最高等级之间随机（不超过原最高等级，所以最高等级那张不变），
+  // HP/攻击按同一公式算。补生成的卡打 repaired 标记，详情页会注明。只跑一次（legacy 清零后不再跑）。
+  function repairLegacyCards(state, rng) {
+    rng = rng || Math.random;
+    var repaired = 0;
+    Object.keys(state.collection).forEach(function (id) {
+      var e = state.collection[id];
+      var n = e.legacy || 0;
+      if (!n || !e.cards) return;
+      var row = entry(Number(id));
+      for (var i = 0; i < n; i++) {
+        var lv = randInt(row[6], Math.max(row[6], e.bestLv), rng);
+        var st = statsForLevel(row, lv);
+        e.cards.push({ level: st.level, hp: st.hp, atk: st.atk, pulledAt: 0, repaired: true });
+        repaired++;
+      }
+      e.legacy = 0;
+    });
+    return repaired;
   }
 
   // 开一包（10 张），含 10 连保底；调用前由 UI 保证 packs > 0
@@ -165,7 +213,9 @@
     drawFromPool: drawFromPool, drawAny: drawAny, rollStats: rollStats, drawCard: drawCard,
     drawPack: drawPack, newState: newState, grantDuePacks: grantDuePacks,
     msToNextPack: msToNextPack, tierTotals: tierTotals, ownedCount: ownedCount,
-    addToCollection: addToCollection, migrateCollection: migrateCollection };
+    addToCollection: addToCollection, migrateCollection: migrateCollection,
+    repairLegacyCards: repairLegacyCards, enforceCap: enforceCap,
+    MAX_CARDS_PER_MON: MAX_CARDS_PER_MON };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   root.Gacha = api;
 })(typeof window !== "undefined" ? window : globalThis);

@@ -4,11 +4,23 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>PokeMem · 宝可梦151抽卡</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div class="bg-decor" aria-hidden="true">
+  <span class="bg-ball b1"></span>
+  <span class="bg-ball b2"></span>
+  <span class="bg-ball b3"></span>
+  <span class="bg-star s1">★</span>
+  <span class="bg-star s2">✦</span>
+  <span class="bg-star s3">★</span>
+  <span class="bg-star s4">✦</span>
+</div>
 <header class="topbar">
-  <h1>🎴 PokeMem <span class="subtitle" data-i18n="subtitle">宝可梦 151 抽卡</span></h1>
+  <h1><span class="pokeball-logo" aria-hidden="true"></span> PokeMem <span class="subtitle" data-i18n="subtitle">宝可梦 151 抽卡</span></h1>
   <span id="debug-badge" class="debug-badge" style="display:none">DEBUG</span>
   <div class="lang-switch">
     <button id="lang-zh" class="lang-btn active">中文</button>
