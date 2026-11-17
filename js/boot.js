@@ -11,4 +11,5 @@
   PokeMem.applyLang();
   PokeMem.tick();
   setInterval(PokeMem.tick, 1000);
+  if (!ctx.state.trainer.registered) PokeMem.showRegister(); // 未注册：先注册才能进主页面
 })();

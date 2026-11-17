@@ -22,6 +22,7 @@
   var TRAINER_MAX_LEVEL = 100; // 训练师与单张宝可梦卡的等级上限都是 100
   var TRAINER_EXP_PER_LEVEL = 100; // 每升 1 级要 100 经验
   var TRAINER_WELCOME_CRYSTALS = 100; // 注册时一次性给 100 梦想结晶（= 10 包），只给一次
+  var TRAINER_NAME_MAX = 12; // 训练师名字最多 12 个字（Task 11/12，用户锁定 1–12 字）
   var CRYSTALS_PER_PACK = 10; // 10 梦想结晶换 1 包（Task 7）
   // ---- 训练师经验（Task 2/3/6：2026-11-16 用户锁定）----
   // 开包得经验：按抽到的卡的稀有度计，一包约 43 经验；满级 100 级共 9900 经验。
@@ -235,6 +236,7 @@
     // 存档会被悄悄清空，所以数组直接当损坏处理
     if (!t || typeof t !== "object" || Array.isArray(t)) { state.trainer = newTrainer(); return state.trainer; }
     if (typeof t.name !== "string") t.name = "";
+    t.name = t.name.trim(); // 只有空格的名字也算没名字（PR #2 遗留：空白名不能算已注册）
     if (typeof t.level !== "number" || !(t.level >= 1)) t.level = 1;
     t.level = Math.min(TRAINER_MAX_LEVEL, Math.floor(t.level));
     // F2：NaN / Infinity 也要当坏值处理（NaN < 0 是 false，旧写法会漏过去）
@@ -273,6 +275,26 @@
     t.welcomeCrystalsGranted = true;
     t.crystals += TRAINER_WELCOME_CRYSTALS;
     return TRAINER_WELCOME_CRYSTALS;
+  }
+
+  // 校验训练师名字：去空格后 1–12 个字。返回 {ok, name, error}（error: "empty" | "tooLong"）
+  function validateTrainerName(name) {
+    var n = typeof name === "string" ? name.trim() : "";
+    if (!n) return { ok: false, name: "", error: "empty" };
+    if (n.length > TRAINER_NAME_MAX) return { ok: false, name: n, error: "tooLong" };
+    return { ok: true, name: n, error: null };
+  }
+
+  // 注册训练师（Task 11/12）：名字 1–12 字，注册成功发 100 梦想结晶（只发一次）。
+  // 已注册时再次调用只改名字，不重复发结晶（改名在训练师 tab 里复用这个函数）。
+  function registerTrainer(state, name) {
+    var v = validateTrainerName(name);
+    if (!v.ok) return v;
+    var t = ensureTrainer(state);
+    t.name = v.name;
+    t.registered = true;
+    grantWelcomeCrystals(state);
+    return { ok: true, name: v.name, error: null };
   }
 
   // 结晶兑换卡包（Task 7）：10 颗结晶换 1 包，计时器不受影响。
@@ -379,10 +401,12 @@
   var api = { PACK_SIZE: PACK_SIZE, PACK_INTERVAL_MS: PACK_INTERVAL_MS, TIER_LABEL: TIER_LABEL,
     TRAINER_MAX_LEVEL: TRAINER_MAX_LEVEL, TRAINER_EXP_PER_LEVEL: TRAINER_EXP_PER_LEVEL,
     TRAINER_WELCOME_CRYSTALS: TRAINER_WELCOME_CRYSTALS, CRYSTALS_PER_PACK: CRYSTALS_PER_PACK,
+    TRAINER_NAME_MAX: TRAINER_NAME_MAX,
     TRAINER_EXP_TABLE: TRAINER_EXP_TABLE, TRAINER_CANDY_PER_LEVEL: TRAINER_CANDY_PER_LEVEL,
     TRAINER_MILESTONE_REWARDS: TRAINER_MILESTONE_REWARDS, TRAINER_CANDY_TABLE: TRAINER_CANDY_TABLE,
     CANDY_PER_LEVEL: CANDY_PER_LEVEL, ITEM_IDS: ITEM_IDS,
     newTrainer: newTrainer, ensureTrainer: ensureTrainer, grantWelcomeCrystals: grantWelcomeCrystals,
+    validateTrainerName: validateTrainerName, registerTrainer: registerTrainer,
     exchangeCrystalsForPack: exchangeCrystalsForPack, addTrainerExp: addTrainerExp,
     levelUpCard: levelUpCard,
     SR_PLUS: SR_PLUS, SSR_PLUS: SSR_PLUS, entry: entry, totalWeight: totalWeight,

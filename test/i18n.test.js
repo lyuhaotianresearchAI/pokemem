@@ -29,6 +29,11 @@ check("151 只的全部属性都有英文", untranslatedTypes.length === 0, "缺
 const tiers = [...new Set(POKEDEX.map(r => r[4]))];
 check("全部稀有度都有英文", tiers.every(x => TIER_EN[x]), tiers.join(","));
 
+// 注册文案中英都有
+const regKeys = ["registerTitle", "registerDesc", "registerNamePh", "registerHint", "registerSubmit", "registerErrEmpty", "registerErrTooLong", "registerWelcome", "registerStart"];
+check("注册文案中英都有", regKeys.every(k => I18N.zh[k] && I18N.en[k]), regKeys.join(","));
+check("欢迎文案占位符", i18nT("zh", "registerWelcome", { name: "小智" }).indexOf("小智") >= 0);
+
 // 占位符替换
 check("占位符替换（中文）", i18nT("zh", "pityIn", { n: 12 }) === "再 12 抽保底 SSR+");
 check("占位符替换（英文）", i18nT("en", "pityIn", { n: 12 }) === "SSR+ guaranteed in 12 pulls");

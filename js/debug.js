@@ -37,5 +37,6 @@
     ctx.state.lang = keepLang; // 清空存档不重置语言
     ctx.state.debug = true; // 清空后仍留在 Debug 模式，方便继续测试
     PokeMem.save(); PokeMem.renderHeader(); PokeMem.renderCollection();
+    PokeMem.showRegister(); // 全新存档未注册：重新弹出注册浮层
   });
 })();

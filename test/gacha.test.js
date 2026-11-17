@@ -409,5 +409,29 @@ check("升 0 级/负数/NaN：返回 0、不动",
   Gacha.levelUpCard(lv6, 1, card6, NaN) === 0 && card6.level === 50 && lv6.trainer.candy === 5);
 check("不传级数默认升 1 级", Gacha.levelUpCard(lv6, 1, card6) === 1 && card6.level === 51);
 
+// 18. 注册训练师（Task 11/12）：名字 1–12 字，注册发 100 结晶（只一次）
+check("名字前后空格去掉", Gacha.validateTrainerName("  小智  ").name === "小智");
+check("空名字 / 只有空格：empty",
+  Gacha.validateTrainerName("").error === "empty" && Gacha.validateTrainerName("   ").error === "empty");
+check("12 个字通过、13 个字 tooLong",
+  Gacha.validateTrainerName("一二三四五六七八九十一二").ok === true &&
+  Gacha.validateTrainerName("一二三四五六七八九十一二三").error === "tooLong");
+check("非字符串名字：empty",
+  Gacha.validateTrainerName(null).error === "empty" && Gacha.validateTrainerName(123).error === "empty");
+const rg = Gacha.newState(0);
+check("注册成功：名字去空格、registered、100 结晶",
+  Gacha.registerTrainer(rg, "  小智 ").ok === true && rg.trainer.name === "小智" &&
+  rg.trainer.registered === true && rg.trainer.crystals === 100);
+check("注册只发一次结晶：再注册只改名字",
+  Gacha.registerTrainer(rg, "小茂").ok === true && rg.trainer.name === "小茂" && rg.trainer.crystals === 100);
+check("注册失败不改状态",
+  Gacha.registerTrainer(rg, "   ").ok === false && rg.trainer.name === "小茂" && rg.trainer.crystals === 100);
+const rg2 = { packs: 1, collection: {}, trainer: { name: "   ", level: 1, exp: 0, crystals: 0, candy: 0, items: {}, registered: true, welcomeCrystalsGranted: false } };
+Gacha.ensureTrainer(rg2);
+check("老存档空白名字：registered 被修回 false", rg2.trainer.registered === false && rg2.trainer.name === "");
+const rg3 = { packs: 1, collection: {} };
+check("没训练师的老存档也能注册",
+  Gacha.registerTrainer(rg3, "小智").ok === true && rg3.trainer.crystals === 100 && rg3.trainer.registered === true);
+
 console.log(failures === 0 ? "\n全部通过 ✅" : "\n失败 " + failures + " 项 ❌");
 process.exit(failures === 0 ? 0 : 1);

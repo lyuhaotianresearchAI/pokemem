@@ -58,7 +58,16 @@ var I18N = {
     alertAddPacks: "输入要加的包数（正整数）",
     alertPackArrived: "已到账 1 包",
     alertNotYet: "还没到时间",
-    confirmReset: "确定清空全部存档吗？卡册、抽卡记录都会消失。"
+    confirmReset: "确定清空全部存档吗？卡册、抽卡记录都会消失。",
+    registerTitle: "成为训练师",
+    registerDesc: "给自己起个名字，开始抽卡吧！注册就送 100 梦想结晶（= 10 包卡包）。",
+    registerNamePh: "训练师名字（1–12 个字）",
+    registerHint: "名字 1–12 个字，注册后可以在训练师页改名。",
+    registerSubmit: "注册并领取 100 梦想结晶",
+    registerErrEmpty: "名字不能为空",
+    registerErrTooLong: "名字最多 12 个字",
+    registerWelcome: "欢迎，{name}！100 梦想结晶已到账（= 10 包卡包），每小时还会再送 1 包。",
+    registerStart: "开始冒险"
   },
   en: {
     subtitle: "Pokémon 151 Gacha",
@@ -117,7 +126,16 @@ var I18N = {
     alertAddPacks: "Enter how many packs to add (a positive number)",
     alertPackArrived: "1 pack arrived",
     alertNotYet: "Not yet",
-    confirmReset: "Erase the whole save? Your collection and pull history will be gone."
+    confirmReset: "Erase the whole save? Your collection and pull history will be gone.",
+    registerTitle: "Become a Trainer",
+    registerDesc: "Pick a name and start pulling! You get 100 Dream Crystals on registration (= 10 packs).",
+    registerNamePh: "Trainer name (1–12 characters)",
+    registerHint: "1–12 characters. You can rename later on the Trainer tab.",
+    registerSubmit: "Register & claim 100 Dream Crystals",
+    registerErrEmpty: "Name can't be empty",
+    registerErrTooLong: "Name must be 12 characters or fewer",
+    registerWelcome: "Welcome, {name}! 100 Dream Crystals claimed (= 10 packs), plus 1 pack every hour.",
+    registerStart: "Start adventuring"
   }
 };
 var TYPE_EN = { "草": "Grass", "毒": "Poison", "火": "Fire", "水": "Water", "虫": "Bug", "飞行": "Flying", "一般": "Normal", "电": "Electric", "地面": "Ground", "格斗": "Fighting", "超能力": "Psychic", "岩石": "Rock", "冰": "Ice", "幽灵": "Ghost", "龙": "Dragon" };

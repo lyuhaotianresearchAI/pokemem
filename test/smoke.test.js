@@ -11,7 +11,7 @@ const GachaNode = require("../gacha.js"); // 仅用于造旧存档夹具
 
 const FILES = ["pokedex.js", "i18n.js", "gacha.js", "js/store.js", "js/util.js",
   "js/lang.js", "js/home.js", "js/dex.js", "js/rates.js", "js/tabs.js",
-  "js/debug.js", "js/boot.js"];
+  "js/debug.js", "js/register.js", "js/boot.js"];
 
 let failures = 0;
 function check(name, cond, detail) {
@@ -143,12 +143,15 @@ function registerSelectors(doc) {
   doc._bySelector["[data-tier-filter]"] = ["ALL", "MR", "UR", "SSR", "SR", "R", "N"].map(function (t) { return btn({ "data-tier-filter": t }); });
   doc._bySelector["[data-owned-filter]"] = ["ALL", "OWNED", "MISSING"].map(function (t) { return btn({ "data-owned-filter": t }); });
   doc._bySelector["[data-add-packs]"] = ["1", "10", "100"].map(function (n) { return btn({ "data-add-packs": n }); });
-  doc._bySelector["[data-i18n]"] = ["tabHome", "tabDex", "tabRates", "subtitle"].map(function (k) {
+  doc._bySelector["[data-i18n]"] = ["tabHome", "tabDex", "tabRates", "subtitle",
+    "registerTitle", "registerDesc", "registerHint", "registerSubmit", "registerStart"].map(function (k) {
     const el = makeEl(doc, "span"); el.setAttribute("data-i18n", k); return el;
   });
   const ph = makeEl(doc, "input");
   ph.setAttribute("data-i18n-ph", "searchPh");
-  doc._bySelector["[data-i18n-ph]"] = [ph];
+  const ph2 = makeEl(doc, "input");
+  ph2.setAttribute("data-i18n-ph", "registerNamePh");
+  doc._bySelector["[data-i18n-ph]"] = [ph, ph2];
 }
 function runApp(initialStorage) {
   const doc = makeDocument();
@@ -187,6 +190,21 @@ check("A 报错监听只注册一次（store.js）",
 check("A 新存档 1 包", ctxA.state.packs === 1, "实际 " + ctxA.state.packs);
 check("A 新存档有训练师（未注册、结晶 0）",
   !!ctxA.state.trainer && ctxA.state.trainer.registered === false && ctxA.state.trainer.crystals === 0);
+check("A 未注册时注册浮层显示", $A("register-overlay").classList.contains("show"));
+const regTitle = byAttr(A.doc._bySelector["[data-i18n]"], "data-i18n", "registerTitle");
+check("A 注册标题是中文", regTitle.textContent === "成为训练师", regTitle.textContent);
+$A("register-name-input").value = "   ";
+$A("register-submit-btn").click();
+check("A 空名字注册失败、浮层还在",
+  $A("register-error").textContent.length > 0 && $A("register-overlay").classList.contains("show") && ctxA.state.trainer.registered === false);
+$A("register-name-input").value = "  小智 ";
+$A("register-submit-btn").click();
+check("A 注册成功：名字去空格、100 结晶",
+  ctxA.state.trainer.registered === true && ctxA.state.trainer.name === "小智" && ctxA.state.trainer.crystals === 100);
+check("A 注册成功显示欢迎",
+  $A("register-welcome-text").textContent.indexOf("小智") >= 0 && $A("register-welcome").style.display !== "none");
+$A("register-start-btn").click();
+check("A 点开始冒险关闭注册浮层", !$A("register-overlay").classList.contains("show"));
 check("A 顶栏已渲染", $A("pack-count").textContent === "1" && $A("owned-count").textContent === "0 / 151");
 
 const i18nTabHome = byAttr(A.doc._bySelector["[data-i18n]"], "data-i18n", "tabHome");
@@ -250,6 +268,7 @@ check("A 下一包立即到账", ctxA.state.packs === 16, "实际 " + ctxA.state
 
 $A("reset-save-btn").click();
 check("A 清空后回到 1 包", ctxA.state.packs === 1, "实际 " + ctxA.state.packs);
+check("A 清空后注册浮层重新出现", $A("register-overlay").classList.contains("show"));
 check("A 清空后仍在 Debug", A.PokeMem.ctx.state.debug === true);
 check("A 清空不重置语言", A.PokeMem.ctx.state.lang === "zh");
 
@@ -283,6 +302,13 @@ const b1 = B.PokeMem.ctx.state.collection[1];
 check("B 7 张卡封顶 5 张", b1.cards.length === 5, "实际 " + b1.cards.length);
 check("B 封顶去掉 Lv 最低 2 张",
   Math.min.apply(null, b1.cards.map(function (c) { return c.level; })) === 30);
+check("B 未注册时注册浮层显示", B.doc.getElementById("register-overlay").classList.contains("show"));
+B.doc.getElementById("register-name-input").value = "小茂";
+B.doc.getElementById("register-name-input").dispatch("keydown",
+  { target: B.doc.getElementById("register-name-input"), key: "Enter" });
+check("B 回车键也能注册",
+  B.PokeMem.ctx.state.trainer.registered === true && B.PokeMem.ctx.state.trainer.name === "小茂" &&
+  B.PokeMem.ctx.state.trainer.crystals === 100);
 
 // ---------- 场景 C：详情页 tab 切换与排序（确定性夹具） ----------
 const det = GachaNode.newState(Date.now());

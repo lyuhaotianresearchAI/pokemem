@@ -114,6 +114,25 @@
   </div>
 </div>
 
+<!-- 注册（进主页面之前必须注册，不能跳过） -->
+<div id="register-overlay" class="overlay">
+  <div class="overlay-box register-box">
+    <div id="register-form">
+      <h2 data-i18n="registerTitle">成为训练师</h2>
+      <p class="hint" data-i18n="registerDesc">给自己起个名字，开始抽卡吧！注册就送 100 梦想结晶（= 10 包卡包）。</p>
+      <input id="register-name-input" type="text" maxlength="12" placeholder="训练师名字（1–12 个字）" data-i18n-ph="registerNamePh">
+      <p class="rule" data-i18n="registerHint">名字 1–12 个字，注册后可以在训练师页改名。</p>
+      <p class="register-error" id="register-error"></p>
+      <button id="register-submit-btn" class="big-btn" data-i18n="registerSubmit">注册并领取 100 梦想结晶</button>
+    </div>
+    <div id="register-welcome" style="display:none">
+      <h2>🎉</h2>
+      <p class="hint" id="register-welcome-text"></p>
+      <button id="register-start-btn" class="big-btn" data-i18n="registerStart">开始冒险</button>
+    </div>
+  </div>
+</div>
+
 <!-- 卡片详情 -->
 <div id="detail-modal" class="overlay">
   <div class="overlay-box detail-box">
@@ -137,6 +156,7 @@
 <script src="js/rates.js"></script>
 <script src="js/tabs.js"></script>
 <script src="js/debug.js"></script>
+<script src="js/register.js"></script>
 <script src="js/boot.js"></script>
 </body>
 </html>
