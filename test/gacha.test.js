@@ -301,5 +301,26 @@ check("经验表 N2/R4/SR8/SSR15/UR25/MR50",
 const packExp = 10 * (0.4992 * 2 + 0.3003 * 4 + 0.1488 * 8 + 0.0405 * 15 + 0.0075 * 25 + 0.0026 * 50);
 check("一包期望经验约 43", Math.abs(packExp - 43) < 1, "算得 " + packExp.toFixed(1));
 
+// 15. 开包结算训练师经验（Task 8）：整包 10 张都算，保底那张也算
+const s10 = Gacha.newState(0); s10.packs = 1;
+const pack10 = Gacha.drawPack(s10, () => 0); // rng 恒 0：前 9 张全是 #001（R），第 10 张触发保底
+const exp10 = pack10.reduce((s, c) => s + Gacha.TRAINER_EXP_TABLE[c.tier], 0);
+check("保底包：第 10 张是保底卡", pack10.some(c => c.pity === true));
+check("保底包经验 = 10 张稀有度经验之和", pack10.trainerExp.exp === exp10, "算得 " + pack10.trainerExp.exp + "，期望 " + exp10);
+check("保底包经验已结算进训练师", s10.trainer.exp === exp10);
+check("保底包没升级、没糖果", pack10.trainerExp.levels === 0 && pack10.trainerExp.candy === 0);
+check("开包返回仍是 10 张卡数组", Array.isArray(pack10) && pack10.length === 10);
+const s11 = Gacha.newState(0); s11.packs = 1; s11.trainer.exp = 90;
+const pack11 = Gacha.drawPack(s11, () => 0);
+check("开包升级：90 + 包经验 → 2 级、+2 糖果",
+  s11.trainer.level === 2 && s11.trainer.candy === 2 && pack11.trainerExp.levels === 1 && pack11.trainerExp.candy === 2);
+check("开包升级后经验余数对得上", s11.trainer.exp === 90 + pack11.trainerExp.exp - 100);
+const s12 = Gacha.newState(0); s12.packs = 1;
+const pack12 = Gacha.drawPack(s12, Math.random);
+const exp12 = pack12.reduce((s, c) => s + Gacha.TRAINER_EXP_TABLE[c.tier], 0);
+check("随机包经验 = 10 张稀有度经验之和", pack12.trainerExp.exp === exp12);
+check("随机包经验账对得上（升级扣掉的 100 也算）",
+  s12.trainer.exp + (s12.trainer.level - 1) * 100 === exp12 && s12.trainer.candy === 2 * (s12.trainer.level - 1));
+
 console.log(failures === 0 ? "\n全部通过 ✅" : "\n失败 " + failures + " 项 ❌");
 process.exit(failures === 0 ? 0 : 1);

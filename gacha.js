@@ -192,7 +192,15 @@
       seenInPack[c.id] = true;
     });
     cards.forEach(function (c) { addToCollection(state, c); });
-    return shuffle(cards, rng);
+    // 训练师经验结算（Task 8）：整包 10 张都按稀有度算经验，保底那张也算。
+    // 结算结果挂在返回的包上，给 Task 14 的开包结果行和升级提示读；
+    // 返回类型不变，仍是卡数组。存盘由调用方负责（首页开包按钮在 drawPack 后调 save）。
+    var packExp = 0;
+    cards.forEach(function (c) { packExp += TRAINER_EXP_TABLE[c.tier] || 0; });
+    var expResult = addTrainerExp(state, packExp);
+    var result = shuffle(cards, rng);
+    result.trainerExp = { exp: packExp, levels: expResult.levels, candy: expResult.candy, items: expResult.items };
+    return result;
   }
 
   // ---- 训练师资料 ----
