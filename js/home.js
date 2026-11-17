@@ -45,19 +45,15 @@
   }
 
   // ---------- 开包 ----------
+  // 开包只抽不结算：先预览 10 张（包数/卡册/经验/保底计数都不动），
+  // 没翻牌就关闭 = 这包没开过；翻过至少一张再点入册，才真正提交。
   $("open-pack-btn").addEventListener("click", function () {
     if (ctx.state.packs <= 0) return;
-    var candyBefore = Gacha.ensureTrainer(ctx.state).candy;
-    ctx.currentPack = Gacha.drawPack(ctx.state, Math.random);
-    // 差值里既有丢卡糖果也有升级糖果；升级糖果已在 trainerExp.candy 里单独显示，这里要扣掉（PR #11 评审 F1）
-    var lvCandy = ctx.currentPack.trainerExp ? ctx.currentPack.trainerExp.candy : 0;
-    ctx.currentPack.trainerCandyGained = Gacha.ensureTrainer(ctx.state).candy - candyBefore - lvCandy;
-    PokeMem.save();
+    ctx.currentPack = Gacha.drawPackPreview(ctx.state, Math.random);
+    ctx.packFlipped = 0;
     renderHeader();
     renderPack();
     $("pack-overlay").classList.add("show");
-    var tp = ctx.currentPack.trainerExp;
-    if (tp && tp.levels > 0) PokeMem.showToast(t("toastLevelUp", { level: ctx.state.trainer.level }));
   });
   // 梦想结晶兑换：10 颗换 1 包（Task 14）。成功必须立即保存（PR #4 O1），
   // 否则扣掉的结晶刷新就回来；余额不足时 exchangeCrystalsForPack 返回 0，什么都不做。
@@ -90,10 +86,13 @@
         if (d.classList.contains("flipped")) return;
         d.classList.add("flipped");
         shakeIfSpecial(d, c.tier);
+        ctx.packFlipped += 1;
+        updateCloseBtn();
       });
       wrap.appendChild(d);
     });
     $("pack-summary").textContent = t("packHint");
+    updateCloseBtn();
     // 开包的训练师收获：经验 + 升级糖果（trainerExp 里只有升级糖果）+ 丢卡糖果（开包前后差值）
     var tp = ctx.currentPack.trainerExp;
     if (tp) {
@@ -106,12 +105,18 @@
       $("pack-trainer").textContent = "";
     }
   }
+  // 入册按钮的文案跟着翻牌状态走：没翻过是“关闭”，翻过至少一张变“入册 & 关闭”
+  function updateCloseBtn() {
+    $("close-pack-btn").textContent = ctx.packFlipped > 0 ? t("collectBtn") : t("closeBtn");
+  }
   $("flip-all-btn").addEventListener("click", function () {
     document.querySelectorAll(".pack-card").forEach(function (el) {
       if (el.classList.contains("flipped")) return;
       el.classList.add("flipped");
       shakeIfSpecial(el, el.dataset.tier);
     });
+    ctx.packFlipped = ctx.currentPack.length; // 全部翻开后 10 张都算翻过
+    updateCloseBtn();
     var best = ctx.currentPack.slice().sort(function (a, b) {
       var order = { MR: 0, UR: 1, SSR: 2, SR: 3, R: 4, N: 5 };
       return order[a.tier] - order[b.tier];
@@ -120,6 +125,16 @@
     $("pack-summary").textContent = t("packBest", { name: cardName(best), tier: best.tier, n: news });
   });
   $("close-pack-btn").addEventListener("click", function () {
+    // 翻过至少一张才真正入册：扣包数、记入卡册、结算经验/糖果/保底计数；
+    // 一张都没翻就直接关，这包不算开过（包数、卡册、经验、保底全都不动）。
+    if (ctx.currentPack && ctx.packFlipped > 0) {
+      var r = Gacha.settlePack(ctx.state, ctx.currentPack);
+      PokeMem.save();
+      renderHeader();
+      if (r.levels > 0) PokeMem.showToast(t("toastLevelUp", { level: ctx.state.trainer.level }));
+    }
+    ctx.currentPack = null;
+    ctx.packFlipped = 0;
     $("pack-overlay").classList.remove("show");
     PokeMem.renderCollection();
   });

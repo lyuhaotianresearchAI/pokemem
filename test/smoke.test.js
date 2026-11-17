@@ -252,10 +252,10 @@ check("A 快捷 +10 包", ctxA.state.packs === 16, "实际 " + ctxA.state.packs)
 ctxA.state.trainer.exp = 90; // 这一包必定升级（90 + 至少 20 经验），验升级提示
 $A("open-pack-btn").click();
 check("A 开包 10 张", ctxA.currentPack && ctxA.currentPack.length === 10);
-check("A 开包扣 1 包", ctxA.state.packs === 15, "实际 " + ctxA.state.packs);
+check("A 开包预览不扣包（翻过才入册）", ctxA.state.packs === 16, "实际 " + ctxA.state.packs);
 check("A 开包浮层显示", $A("pack-overlay").classList.contains("show"));
 check("A 开包结果有训练师经验行", $A("pack-trainer").textContent.indexOf("经验") >= 0, $A("pack-trainer").textContent);
-check("A 开包升级弹出提示", $A("toast").classList.contains("show") && $A("toast").textContent.indexOf("Lv.") >= 0, $A("toast").textContent);
+check("A 开包预览不弹升级提示（还没入册）", !$A("toast").classList.contains("show"));
 check("A 包里 10 张卡已渲染", $A("pack-cards").children.length === 10);
 $A("pack-cards").children[0].click();
 check("A 点一张翻开", $A("pack-cards").children[0].classList.contains("flipped"));
@@ -264,6 +264,8 @@ check("A 全部翻开有总结", $A("pack-summary").textContent.length > 0, $A("
 check("A 全部翻开每张都翻面",
   $A("pack-cards").children.every(function (el) { return el.classList.contains("flipped"); }));
 $A("close-pack-btn").click();
+check("A 翻过再入册扣 1 包", ctxA.state.packs === 15, "实际 " + ctxA.state.packs);
+check("A 入册后升级弹出提示", $A("toast").classList.contains("show") && $A("toast").textContent.indexOf("Lv.") >= 0, $A("toast").textContent);
 check("A 关闭浮层", !$A("pack-overlay").classList.contains("show"));
 check("A 卡册 151 格", $A("collection-grid").children.length === 151, "实际 " + $A("collection-grid").children.length);
 
@@ -444,6 +446,9 @@ $E("open-pack-btn").click();
 check("E 丢卡糖果不含升级糖果",
   $E("pack-trainer").textContent === "训练师 +51 经验　·　升 1 级（+2 糖果）　·　超上限丢卡 +8 糖果",
   $E("pack-trainer").textContent);
+check("E 开包预览不发糖果（翻过才入册）", E.PokeMem.ctx.state.trainer.candy === 0, "实际 " + E.PokeMem.ctx.state.trainer.candy);
+$E("pack-cards").children[0].click(); // 翻一张再入册
+$E("close-pack-btn").click();
 check("E 糖果总数是 8 + 2 = 10", E.PokeMem.ctx.state.trainer.candy === 10, "实际 " + E.PokeMem.ctx.state.trainer.candy);
 check("E 升级弹出提示", $E("toast").classList.contains("show") && $E("toast").textContent.indexOf("Lv.2") >= 0, $E("toast").textContent);
 

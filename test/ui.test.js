@@ -92,6 +92,11 @@ check("顶栏在弹窗之上（z-index 高于弹窗 20，低于轻提示 40）",
   topbarLine.indexOf("z-index: 35") >= 0, topbarLine);
 const overlayShowLine = css.split("\n").filter(function (l) { return l.indexOf(".overlay.show {") === 0; })[0] || "";
 check("弹窗留出顶栏高度（盒子不被顶栏盖住）", overlayShowLine.indexOf("padding: 68px 12px 20px") >= 0, overlayShowLine);
+const homeJsText = fs.readFileSync(__dirname + "/../js/home.js", "utf8");
+check("开包用预览（drawPackPreview），不直接结算", homeJsText.includes("drawPackPreview") && !homeJsText.includes("Gacha.drawPack("));
+check("有关闭不算开过的翻牌计数", homeJsText.includes("packFlipped"));
+check("翻牌后按钮变入册", homeJsText.includes("updateCloseBtn") && homeJsText.includes('t("collectBtn")') && homeJsText.includes('t("closeBtn")'));
+check("没翻牌关闭不调提交", homeJsText.includes("ctx.packFlipped > 0") && homeJsText.includes("settlePack"));
 
 // Task 20 头像
 const { AVATARS } = require("../avatars.js");

@@ -27,6 +27,7 @@
   PokeMem.ctx = {
     state: load(),
     currentPack: null, // 刚开的那包卡（开包结果浮层用）
+    packFlipped: 0, // 当前这包已翻开几张（0 张就关闭不算开过）
     filterTier: "ALL",
     filterOwned: "ALL",
     query: "",

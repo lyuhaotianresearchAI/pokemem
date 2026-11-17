@@ -79,19 +79,25 @@
     return statsForLevel(row, lv);
   }
 
-  // 抽一张：处理 50 抽 SSR 保底；更新并返回新的 sinceSSR
-  function drawCard(state, rng) {
+  // 抽一张：处理 50 抽 SSR 保底；返回抽到的卡和更新后的 sinceSSR（不改 state，
+  // 供 drawCards 预览用；drawCard 是它的有状态包装，行为与原来完全一致）
+  function drawCardWithCounter(sinceSSR, rng) {
     var row;
-    if (state.sinceSSR >= 49) { // 连续 49 抽未出 SSR，下一抽必出 SSR 及以上
+    if (sinceSSR >= 49) { // 连续 49 抽未出 SSR，下一抽必出 SSR 及以上
       row = drawFromPool(SSR_PLUS, rng);
     } else {
       row = drawAny(rng);
     }
     var isSSRPlus = SSR_PLUS.indexOf(row[4]) >= 0;
-    state.sinceSSR = isSSRPlus ? 0 : state.sinceSSR + 1;
+    sinceSSR = isSSRPlus ? 0 : sinceSSR + 1;
     var st = rollStats(row, rng);
-    return { id: row[0], name: row[1], en: row[2], types: row[3], tier: row[4], prob: row[5],
-             level: st.level, hp: st.hp, atk: st.atk };
+    return { card: { id: row[0], name: row[1], en: row[2], types: row[3], tier: row[4], prob: row[5],
+             level: st.level, hp: st.hp, atk: st.atk }, sinceSSR: sinceSSR };
+  }
+  function drawCard(state, rng) {
+    var r = drawCardWithCounter(state.sinceSSR, rng);
+    state.sinceSSR = r.sinceSSR;
+    return r.card;
   }
 
   function shuffle(arr, rng) {
@@ -178,46 +184,87 @@
     return repaired;
   }
 
-  // 开一包（10 张），含 10 连保底；调用前由 UI 保证 packs > 0
-  function drawPack(state, rng) {
+  // 抽一包的 10 张卡（只抽、不结算）：保底逻辑与原来 drawPack 的抽牌部分完全一致，
+  // 但不改 state；返回的卡数组上挂 sinceSSR（抽完后的保底计数，供 settlePack 提交时写回）。
+  // NEW 判定在洗牌后算（Task 18）：开包前未拥有、且是展示顺序里第一次出现的那张，
+  // 角标落在第一张展示的卡上；之前先判定再洗牌，角标会落在最后一张展示的卡上。
+  function drawCards(state, rng) {
     rng = rng || Math.random;
-    var cards = [], i, hasSRPlus = false;
+    var cards = [], i, hasSRPlus = false, sinceSSR = state.sinceSSR;
     for (i = 0; i < PACK_SIZE - 1; i++) {
-      var c = drawCard(state, rng);
-      if (SR_PLUS.indexOf(c.tier) >= 0) hasSRPlus = true;
-      cards.push(c);
+      var r = drawCardWithCounter(sinceSSR, rng);
+      sinceSSR = r.sinceSSR;
+      if (SR_PLUS.indexOf(r.card.tier) >= 0) hasSRPlus = true;
+      cards.push(r.card);
     }
     var last;
     if (hasSRPlus) {
-      last = drawCard(state, rng);
+      var r2 = drawCardWithCounter(sinceSSR, rng);
+      sinceSSR = r2.sinceSSR;
+      last = r2.card;
     } else { // 保底：第 10 张强制从 SR+ 池抽
       var row = drawFromPool(SR_PLUS, rng);
       var st = rollStats(row, rng);
       var isSSRPlus = SSR_PLUS.indexOf(row[4]) >= 0;
-      state.sinceSSR = isSSRPlus ? 0 : state.sinceSSR + 1;
+      sinceSSR = isSSRPlus ? 0 : sinceSSR + 1;
       last = { id: row[0], name: row[1], en: row[2], types: row[3], tier: row[4], prob: row[5],
                level: st.level, hp: st.hp, atk: st.atk, pity: true };
     }
     cards.push(last);
-    state.packs -= 1;
-    state.packsOpened += 1;
-    state.totalDraws += PACK_SIZE;
-    // 训练师经验结算（Task 8）：整包 10 张都按稀有度算经验，保底那张也算。
-    // 结算结果挂在返回的包上，给 Task 14 的开包结果行和升级提示读；
-    // 返回类型不变，仍是卡数组。存盘由调用方负责（首页开包按钮在 drawPack 后调 save）。
-    var packExp = 0;
-    cards.forEach(function (c) { packExp += TRAINER_EXP_TABLE[c.tier] || 0; });
-    var expResult = addTrainerExp(state, packExp);
     var result = shuffle(cards, rng);
-    // NEW 判定：开包前未拥有、且是展示顺序里第一次出现的那张（Task 18：洗牌后判定，角标落在第一张展示的卡上；之前先判定再洗牌，角标会落在最后一张展示的卡上）
+    // NEW 判定（Task 18）：开包前未拥有、且是展示顺序里第一次出现的那张
     var seenInPack = {};
     result.forEach(function (c) {
       c.isNew = !state.collection[c.id] && !seenInPack[c.id];
       seenInPack[c.id] = true;
     });
-    result.forEach(function (c) { addToCollection(state, c); });
-    result.trainerExp = { exp: packExp, levels: expResult.levels, candy: expResult.candy, items: expResult.items };
+    result.sinceSSR = sinceSSR;
     return result;
+  }
+
+  // 提交一包（把抽好的 10 张真正入册）：扣包数、记开包数/总抽数、写回保底计数、
+  // 逐张记入卡册（含超上限丢卡换糖果）、结算训练师经验。
+  // 返回 { exp, levels, candy, items, dropCandy }：dropCandy 是丢卡换的糖果
+  // （升级糖果已在 candy 里单独算，这里扣掉，和原来首页的算法一致）。
+  // 存盘由调用方负责。
+  function settlePack(state, cards) {
+    var candyBefore = ensureTrainer(state).candy;
+    cards.forEach(function (c) { addToCollection(state, c); });
+    // 训练师经验结算（Task 8）：整包 10 张都按稀有度算经验，保底那张也算。
+    var packExp = 0;
+    cards.forEach(function (c) { packExp += TRAINER_EXP_TABLE[c.tier] || 0; });
+    var expResult = addTrainerExp(state, packExp);
+    state.packs -= 1;
+    state.packsOpened += 1;
+    state.totalDraws += PACK_SIZE;
+    state.sinceSSR = cards.sinceSSR;
+    var dropCandy = ensureTrainer(state).candy - candyBefore - expResult.candy;
+    return { exp: packExp, levels: expResult.levels, candy: expResult.candy,
+             items: expResult.items, dropCandy: dropCandy };
+  }
+
+  // 预览开包：抽 10 张并在存档副本上模拟提交，算出这次开包会得的经验/升级/糖果，
+  // 挂在返回的包上（trainerExp、trainerCandyGained），给开包结果行读；真实存档一字不动。
+  // 用户没翻牌就关闭时，这包就当没开过；翻过至少一张再点入册，才调 settlePack 真正提交。
+  function drawPackPreview(state, rng) {
+    var cards = drawCards(state, rng);
+    var sim = JSON.parse(JSON.stringify(state));
+    var r = settlePack(sim, cards);
+    cards.trainerExp = { exp: r.exp, levels: r.levels, candy: r.candy, items: r.items };
+    cards.trainerCandyGained = r.dropCandy;
+    return cards;
+  }
+
+  // 开一包（10 张），含 10 连保底；调用前由 UI 保证 packs > 0。
+  // 等价于 drawCards + settlePack（抽完立即提交，行为与原来完全一致）。
+  // 结算结果挂在返回的包上，给 Task 14 的开包结果行和升级提示读；
+  // 返回类型不变，仍是卡数组。存盘由调用方负责（首页开包按钮在 drawPack 后调 save）。
+  function drawPack(state, rng) {
+    var cards = drawCards(state, rng);
+    var r = settlePack(state, cards);
+    cards.trainerExp = { exp: r.exp, levels: r.levels, candy: r.candy, items: r.items };
+    cards.trainerCandyGained = r.dropCandy;
+    return cards;
   }
 
   // ---- 训练师资料 ----
@@ -430,7 +477,7 @@
     levelUpCard: levelUpCard,
     SR_PLUS: SR_PLUS, SSR_PLUS: SSR_PLUS, entry: entry, totalWeight: totalWeight,
     drawFromPool: drawFromPool, drawAny: drawAny, rollStats: rollStats, drawCard: drawCard,
-    drawPack: drawPack, newState: newState, grantDuePacks: grantDuePacks,
+    drawPack: drawPack, drawPackPreview: drawPackPreview, settlePack: settlePack, newState: newState, grantDuePacks: grantDuePacks,
     msToNextPack: msToNextPack, tierTotals: tierTotals, ownedCount: ownedCount,
     addToCollection: addToCollection, migrateCollection: migrateCollection,
     repairLegacyCards: repairLegacyCards, enforceCap: enforceCap,
