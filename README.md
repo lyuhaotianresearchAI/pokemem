@@ -52,10 +52,12 @@
 
 ## 文件
 
-- `index.html` / `style.css` / `app.js` — 页面与交互
+- `index.html` / `style.css` — 页面与样式
+- `js/` — 界面逻辑（按职责拆分，加载顺序见 `index.html`：`store.js` 存档与共享状态、`util.js` 工具、`lang.js` 语言、`home.js` 首页与开包、`dex.js` 卡册与详情、`rates.js` 概率、`tabs.js` 页签、`debug.js` Debug 面板、`boot.js` 启动）
 - `pokedex.js` — 151 只图鉴数据
 - `gacha.js` — 抽卡核心逻辑（浏览器和 Node 共用，可单测）
 - `test/gacha.test.js` — 概率/保底/数值/计时的本地验证（`node test/gacha.test.js`）
+- `test/smoke.test.js` — 拆分后的全链路冒烟验证（`node test/smoke.test.js`）：启动、开包、卡册、概率、页签、Debug
 
 ## 待定（下一步可做）
 
