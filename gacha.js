@@ -29,6 +29,7 @@
   var TRAINER_CANDY_PER_LEVEL = 2; // 每升 1 级给 2 糖果（不给结晶）
   // 里程碑：10 级给 3 个超级球，25 级给 3 个高级球（数量是实现时定的，可调）
   var TRAINER_MILESTONE_REWARDS = { 10: { great_ball: 3 }, 25: { ultra_ball: 3 } };
+  var TRAINER_CANDY_TABLE = { N: 1, R: 2, SR: 4, SSR: 8, UR: 15, MR: 30 }; // 超上限丢卡换糖果（Task 9，用户锁定）
   var ITEM_IDS = ["poke_ball", "great_ball", "ultra_ball",
     "fire_stone", "water_stone", "thunder_stone", "leaf_stone", "moon_stone"];
 
@@ -101,17 +102,25 @@
     e.cards.push({ level: card.level, hp: card.hp, atk: card.atk, pulledAt: Date.now() });
     e.count += 1;
     if (card.level > e.bestLv) { e.bestLv = card.level; e.bestHp = card.hp; e.bestAtk = card.atk; }
-    dropLowest(e); // 超过 5 张就去掉 Lv 最低的一张（新抽到的 Lv 最低时，去掉的就是它自己）
+    dropLowest(state, card.id, e); // 超过 5 张就去掉 Lv 最低的一张（新抽到的 Lv 最低时，去掉的就是它自己）
   }
 
   // 去掉 Lv 最低的一张卡（只在超过上限时）；返回是否去掉了一张
-  function dropLowest(e) {
+  // 去掉 Lv 最低的一张卡（只在超过上限时）；返回是否去掉了一张。
+  // 掉的卡按稀有度换成糖果（Task 9，用户锁定：N1/R2/SR4/SSR8/UR15/MR30），
+  // 直接加到训练师的糖果上。enforceCap 启动时执行上限也会经过这里，同样换糖果。
+  function dropLowest(state, id, e) {
     if (!e.cards || e.cards.length <= MAX_CARDS_PER_MON) return false;
     var minI = 0;
     for (var i = 1; i < e.cards.length; i++) if (e.cards[i].level < e.cards[minI].level) minI = i;
     e.cards.splice(minI, 1);
     e.count -= 1;
     e.droppedCount = (e.droppedCount || 0) + 1;
+    var row = entry(Number(id));
+    var candy = row ? (TRAINER_CANDY_TABLE[row[4]] || 0) : 0;
+    if (candy > 0 && state) {
+      ensureTrainer(state).candy += candy;
+    }
     return true;
   }
 
@@ -120,7 +129,7 @@
     var removed = 0;
     Object.keys(state.collection).forEach(function (id) {
       var e = state.collection[id];
-      while (dropLowest(e)) removed++;
+      while (dropLowest(state, id, e)) removed++;
     });
     return removed;
   }
@@ -339,7 +348,8 @@
     TRAINER_MAX_LEVEL: TRAINER_MAX_LEVEL, TRAINER_EXP_PER_LEVEL: TRAINER_EXP_PER_LEVEL,
     TRAINER_WELCOME_CRYSTALS: TRAINER_WELCOME_CRYSTALS, CRYSTALS_PER_PACK: CRYSTALS_PER_PACK,
     TRAINER_EXP_TABLE: TRAINER_EXP_TABLE, TRAINER_CANDY_PER_LEVEL: TRAINER_CANDY_PER_LEVEL,
-    TRAINER_MILESTONE_REWARDS: TRAINER_MILESTONE_REWARDS, ITEM_IDS: ITEM_IDS,
+    TRAINER_MILESTONE_REWARDS: TRAINER_MILESTONE_REWARDS, TRAINER_CANDY_TABLE: TRAINER_CANDY_TABLE,
+    ITEM_IDS: ITEM_IDS,
     newTrainer: newTrainer, ensureTrainer: ensureTrainer, grantWelcomeCrystals: grantWelcomeCrystals,
     exchangeCrystalsForPack: exchangeCrystalsForPack, addTrainerExp: addTrainerExp,
     SR_PLUS: SR_PLUS, SSR_PLUS: SSR_PLUS, entry: entry, totalWeight: totalWeight,

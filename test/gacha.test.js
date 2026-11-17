@@ -309,18 +309,59 @@ check("保底包：第 10 张是保底卡", pack10.some(c => c.pity === true));
 check("保底包经验 = 10 张稀有度经验之和", pack10.trainerExp.exp === exp10, "算得 " + pack10.trainerExp.exp + "，期望 " + exp10);
 check("保底包经验已结算进训练师", s10.trainer.exp === exp10);
 check("保底包没升级、没糖果", pack10.trainerExp.levels === 0 && pack10.trainerExp.candy === 0);
+check("保底包丢卡也换糖果：9 张 #001 掉 4 张，各 2 糖果", s10.trainer.candy === 8 && s10.collection[1].droppedCount === 4);
 check("开包返回仍是 10 张卡数组", Array.isArray(pack10) && pack10.length === 10);
 const s11 = Gacha.newState(0); s11.packs = 1; s11.trainer.exp = 90;
 const pack11 = Gacha.drawPack(s11, () => 0);
-check("开包升级：90 + 包经验 → 2 级、+2 糖果",
-  s11.trainer.level === 2 && s11.trainer.candy === 2 && pack11.trainerExp.levels === 1 && pack11.trainerExp.candy === 2);
+check("开包升级：90 + 包经验 → 2 级，升级 +2 糖果、丢卡 +8 糖果",
+  s11.trainer.level === 2 && s11.trainer.candy === 10 && pack11.trainerExp.levels === 1 && pack11.trainerExp.candy === 2);
 check("开包升级后经验余数对得上", s11.trainer.exp === 90 + pack11.trainerExp.exp - 100);
 const s12 = Gacha.newState(0); s12.packs = 1;
 const pack12 = Gacha.drawPack(s12, Math.random);
 const exp12 = pack12.reduce((s, c) => s + Gacha.TRAINER_EXP_TABLE[c.tier], 0);
 check("随机包经验 = 10 张稀有度经验之和", pack12.trainerExp.exp === exp12);
 check("随机包经验账对得上（升级扣掉的 100 也算）",
-  s12.trainer.exp + (s12.trainer.level - 1) * 100 === exp12 && s12.trainer.candy === 2 * (s12.trainer.level - 1));
+  s12.trainer.exp + (s12.trainer.level - 1) * 100 === exp12);
+const dropCandy12 = Object.keys(s12.collection).reduce((sum, id) =>
+  sum + (s12.collection[id].droppedCount || 0) * Gacha.TRAINER_CANDY_TABLE[Gacha.entry(Number(id))[4]], 0);
+check("随机包糖果账对得上（升级 + 丢卡）",
+  s12.trainer.candy === 2 * (s12.trainer.level - 1) + dropCandy12);
+
+// 16. 超上限丢卡换糖果（Task 9）：N1/R2/SR4/SSR8/UR15/MR30
+const candyCases = [
+  { id: 10, tier: "N", want: 1 },
+  { id: 25, tier: "R", want: 2 },
+  { id: 12, tier: "SR", want: 4 },
+  { id: 3, tier: "SSR", want: 8 },
+  { id: 144, tier: "UR", want: 15 },
+  { id: 150, tier: "MR", want: 30 }
+];
+candyCases.forEach(function (tc) {
+  const s = Gacha.newState(0);
+  [10, 20, 30, 40, 50, 60].forEach(lv => Gacha.addToCollection(s, { id: tc.id, level: lv, hp: 100, atk: 50 }));
+  check(tc.tier + " 卡超上限掉 1 张，得 " + tc.want + " 糖果",
+    Gacha.entry(tc.id)[4] === tc.tier && s.trainer.candy === tc.want &&
+    s.collection[tc.id].droppedCount === 1 && s.collection[tc.id].cards.length === 5);
+});
+const cm = Gacha.newState(0);
+[71, 40, 90, 65, 55, 88, 30].forEach((lv, i) => Gacha.addToCollection(cm, { id: 25, level: lv, hp: 100 + i, atk: 50 + i }));
+check("R 卡 7 张进、掉 2 张最低，得 4 糖果", cm.trainer.candy === 4 && cm.collection[25].droppedCount === 2);
+const cn = Gacha.newState(0);
+[10, 20, 30, 40, 50].forEach(lv => Gacha.addToCollection(cn, { id: 25, level: lv, hp: 100, atk: 50 }));
+check("正好 5 张不掉卡、不得糖果", cn.trainer.candy === 0 && (cn.collection[25].droppedCount || 0) === 0);
+const cw = Gacha.newState(0);
+[71, 40, 90, 65, 55].forEach(lv => Gacha.addToCollection(cw, { id: 25, level: lv, hp: 100, atk: 50 }));
+Gacha.addToCollection(cw, { id: 25, level: 20, hp: 120, atk: 60 });
+check("新抽 Lv 最低的卡直接被去掉，也换 2 糖果",
+  cw.trainer.candy === 2 && cw.collection[25].cards.every(c => c.level !== 20));
+const ce = Gacha.newState(0);
+ce.collection[4] = { count: 8, bestLv: 94, bestHp: 264, bestAtk: 190, legacy: 0,
+  cards: [94, 74, 69, 68, 68, 50, 40, 30].map(lv => ({ level: lv, hp: 200, atk: 100, pulledAt: 0 })) };
+const removed = Gacha.enforceCap(ce);
+check("enforceCap 掉 3 张 R 卡，得 6 糖果", removed === 3 && ce.trainer.candy === 6 && ce.collection[4].cards.length === 5);
+const cl = { packs: 1, collection: {} };
+[10, 20, 30, 40, 50, 60].forEach(lv => Gacha.addToCollection(cl, { id: 10, level: lv, hp: 100, atk: 50 }));
+check("没训练师的老存档：掉卡照样换糖果", cl.trainer && cl.trainer.candy === 1);
 
 console.log(failures === 0 ? "\n全部通过 ✅" : "\n失败 " + failures + " 项 ❌");
 process.exit(failures === 0 ? 0 : 1);
