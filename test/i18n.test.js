@@ -46,6 +46,10 @@ const crystalKeys = ["crystalLabel", "exchangeBtn", "packTrainerExp", "packTrain
 check("结晶/开包训练师行文案中英都有", crystalKeys.every(k => I18N.zh[k] && I18N.en[k]), crystalKeys.join(","));
 check("升级提示占位符", i18nT("zh", "toastLevelUp", { level: 2 }).indexOf("Lv.2") >= 0);
 
+// 糖果升级文案中英都有
+const levelUpKeys = ["levelUpBtn", "detailCandy", "levelUpToast"];
+check("糖果升级文案中英都有", levelUpKeys.every(k => I18N.zh[k] && I18N.en[k]), levelUpKeys.join(","));
+
 // 占位符替换
 check("占位符替换（中文）", i18nT("zh", "pityIn", { n: 12 }) === "再 12 抽保底 SSR+");
 check("占位符替换（英文）", i18nT("en", "pityIn", { n: 12 }) === "SSR+ guaranteed in 12 pulls");

@@ -27,6 +27,7 @@ const els = {};
 const sandbox = {
   console: console,
   setInterval: () => 0,
+  setTimeout: () => 0, // 升级提示用（Task 14 的 showToast）；桩里不真的等 3 秒
   addEventListener: () => {},
   localStorage: { _d: {}, getItem(k) { return this._d[k] || null; }, setItem(k, v) { this._d[k] = String(v); }, removeItem(k) { delete this._d[k]; } },
   document: {
@@ -51,6 +52,7 @@ const state = Gacha.newState(1000000);
 [71, 40, 90, 65, 55, 88, 30].forEach((lv, i) => {
   Gacha.addToCollection(state, { id: 33, level: lv, hp: 100 + i, atk: 50 + i });
 });
+state.trainer.candy = 5; // 升级测试用糖果
 sandbox.localStorage.setItem("pokemem-save-v1", JSON.stringify(state));
 // app.js 已拆成 js/ 模块（PR #3），按 index.html 里的加载顺序跑
 run("js/store.js");
@@ -81,6 +83,27 @@ check("默认选中 Lv 最高那张（右侧详情 Lv 90）", html.includes('<di
 check("上限提示出现（超过 5 张会被去掉）", html.includes("每只宝可梦最多保留 5 张卡"));
 check("不再显示已去掉几张", !html.includes("已去掉"));
 check("标题是全部卡牌（5 张）", html.includes("全部卡牌（5 张）"));
+
+// ---------- 糖果升级（Task 15） ----------
+const vmState = sandbox.PokeMem.ctx.state;
+check("升级按钮可用（Lv 90、糖果 5）", els["detail-levelup-btn"].disabled === false);
+check("详情页显示糖果数", els["detail-candy"].textContent.indexOf("5") >= 0, els["detail-candy"].textContent);
+els["detail-levelup-btn"].listeners.click[0]();
+check("升级后选中卡 Lv 90 → 91", sandbox.PokeMem.ctx.detailSelected.level === 91);
+check("升级花 1 糖果", vmState.trainer.candy === 4, "实际 " + vmState.trainer.candy);
+const saved = JSON.parse(sandbox.localStorage.getItem("pokemem-save-v1"));
+check("升级后已保存", saved.trainer.candy === 4 && saved.collection[33].cards.some(c => c.level === 91));
+check("升级弹出提示", els["toast"].textContent.indexOf("Lv.91") >= 0, els["toast"].textContent);
+check("详情面板重绘显示 Lv.91", els["detail-cards"].innerHTML.indexOf("<b>91</b>") >= 0);
+vmState.trainer.candy = 0;
+cell.listeners.click[0](); // 重新打开详情刷新按钮状态
+check("糖果 0 时按钮禁用", els["detail-levelup-btn"].disabled === true);
+els["detail-levelup-btn"].listeners.click[0]();
+check("糖果 0 时点升级也没变化", sandbox.PokeMem.ctx.detailSelected.level === 91 && vmState.trainer.candy === 0);
+vmState.trainer.candy = 5;
+sandbox.PokeMem.ctx.detailSelected.level = 100;
+cell.listeners.click[0]();
+check("满级时按钮禁用", els["detail-levelup-btn"].disabled === true);
 
 console.log(failures === 0 ? "\n全部通过 ✅" : "\n失败 " + failures + " 项 ❌");
 process.exit(failures === 0 ? 0 : 1);

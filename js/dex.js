@@ -4,6 +4,7 @@
   var $ = PokeMem.$;
   var ctx = PokeMem.ctx;
   function t(key, vars) { return PokeMem.t(key, vars); }
+  var currentRow = null; // 当前详情页的宝可梦行（升级按钮重绘详情时用）
   function dexName(row) { return PokeMem.dexName(row); }
   function tierLabel(tier) { return PokeMem.tierLabel(tier); }
   function typeLabel(types) { return PokeMem.typeLabel(types); }
@@ -34,6 +35,7 @@
   }
   // ---------- 详情：列出该宝可梦的全部卡，可按 Lv / HP / 攻击排序 ----------
   function showDetail(r) {
+    currentRow = r;
     var owned = ctx.state.collection[r[0]];
     var primary = dexName(r), secondary = PokeMem.lang() === "en" ? r[1] : r[2];
     $("detail-img").src = imgUrl(r[0]);
@@ -48,7 +50,7 @@
   }
   function renderDetailCards(r, owned) {
     var box = $("detail-cards");
-    if (!owned || !owned.cards || !owned.cards.length) { box.innerHTML = ""; ctx.detailSelected = null; return; }
+    if (!owned || !owned.cards || !owned.cards.length) { box.innerHTML = ""; ctx.detailSelected = null; updateLevelUpBtn(); return; }
     // 先按 Lv 取最高的 5 张，再按当前排序键排 tab 顺序
     var top = owned.cards.slice().sort(function (a, b) { return b.level - a.level; }).slice(0, 5);
     var key = ctx.detailSort.key, dir = ctx.detailSort.dir;
@@ -86,12 +88,30 @@
         renderDetailCards(r, owned);
       });
     });
+    updateLevelUpBtn();
+  }
+  // 升级行：糖果余额 + 按钮可用状态（没卡、满级、糖果 0 时禁用）
+  function updateLevelUpBtn() {
+    var tr = Gacha.ensureTrainer(ctx.state);
+    var sel = ctx.detailSelected;
+    $("detail-candy").textContent = t("detailCandy", { n: tr.candy });
+    $("detail-levelup-btn").disabled = !(sel && sel.level < 100 && tr.candy > 0);
   }
   function sortBtn(key, label) {
     var arrow = ctx.detailSort.key === key ? (ctx.detailSort.dir === "desc" ? " ▼" : " ▲") : "";
     return '<button data-sort="' + key + '"' + (ctx.detailSort.key === key ? ' class="active"' : "") + ">" + label + arrow + "</button>";
   }
   $("detail-close").addEventListener("click", function () { $("detail-modal").classList.remove("show"); });
+  // 糖果升级：选中的卡 +1 级（1 糖果），成功后保存、弹提示、重绘详情（Task 15）
+  $("detail-levelup-btn").addEventListener("click", function () {
+    var sel = ctx.detailSelected;
+    if (!sel || !currentRow) return;
+    var gained = Gacha.levelUpCard(ctx.state, currentRow[0], sel, 1);
+    if (gained <= 0) return; // 糖果不够 / 已满级时什么都不做（按钮本应已禁用，这是兜底）
+    PokeMem.save();
+    PokeMem.showToast(t("levelUpToast", { name: "#" + String(currentRow[0]).padStart(3, "0") + " " + dexName(currentRow), level: sel.level }));
+    showDetail(currentRow);
+  });
   $("detail-modal").addEventListener("click", function (e) { if (e.target === this) this.classList.remove("show"); });
 
   document.querySelectorAll("[data-tier-filter]").forEach(function (btn) {

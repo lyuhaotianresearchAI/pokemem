@@ -346,6 +346,7 @@ check("B 回车键也能注册",
 
 // ---------- 场景 C：详情页 tab 切换与排序（确定性夹具） ----------
 const det = GachaNode.newState(Date.now());
+det.trainer.candy = 3; // 升级测试用糖果
 det.collection[25] = { count: 5, bestLv: 90, bestHp: 120, bestAtk: 80, legacy: 0,
   cards: [
     { level: 10, hp: 100, atk: 40, pulledAt: 0 },
@@ -374,6 +375,12 @@ cardTabs()[1].click();
 check("C 点第 2 个 tab 换卡", C.PokeMem.ctx.detailSelected !== prevSel);
 check("C 换卡后面板更新",
   boxC.innerHTML.indexOf("<b>" + C.PokeMem.ctx.detailSelected.level + "</b>") >= 0);
+const selBefore = C.PokeMem.ctx.detailSelected;
+const lvBefore = selBefore.level;
+C.doc.getElementById("detail-levelup-btn").click();
+check("C 糖果升级 +1 级", selBefore.level === lvBefore + 1 && C.PokeMem.ctx.state.trainer.candy === 2,
+  "Lv " + selBefore.level + " 糖果 " + C.PokeMem.ctx.state.trainer.candy);
+check("C 升级弹出提示", C.doc.getElementById("toast").classList.contains("show"));
 C.doc.getElementById("detail-close").click();
 check("C 关闭详情", !C.doc.getElementById("detail-modal").classList.contains("show"));
 
