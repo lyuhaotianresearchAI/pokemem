@@ -355,6 +355,7 @@
     var idx = e.cards.indexOf(card);
     if (idx < 0) return 0;
     if (!card || typeof card.level !== "number" || !isFinite(card.level)) return 0;
+    if (Math.floor(card.level) !== card.level || card.level < 1) return 0; // 手改存档的负数/小数/0 级不能花糖果（Task 17，PR #8 O1）
     var row = entry(Number(id));
     if (!row) return 0;
     var gain = Math.min(levels, t.candy, TRAINER_MAX_LEVEL - card.level);
@@ -373,6 +374,7 @@
 
   // ---- 卡包计时（正式版）----
   function newState(now) {
+    if (typeof now === "undefined") now = Date.now(); // 不传时间默认现在（Task 17，PR #11 O1：不然 lastGrantAt 是 undefined，计时变 NaN）
     return { version: 2, packs: 1, lastGrantAt: now, collection: {}, totalDraws: 0,
              packsOpened: 0, sinceSSR: 0, debug: false, createdAt: now,
              trainer: newTrainer() };

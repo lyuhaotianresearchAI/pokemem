@@ -433,5 +433,33 @@ const rg3 = { packs: 1, collection: {} };
 check("没训练师的老存档也能注册",
   Gacha.registerTrainer(rg3, "小智").ok === true && rg3.trainer.crystals === 100 && rg3.trainer.registered === true);
 
+// 19. Task 17：边界与回归（之前两个评审留下的加固 + 边界）
+// 19a. newState() 不传时间：lastGrantAt/createdAt 默认 Date.now()，计时不 NaN（PR #11 O1）
+const ns0 = Gacha.newState();
+check("newState() 不传时间：lastGrantAt 是数字",
+  typeof ns0.lastGrantAt === "number" && isFinite(ns0.lastGrantAt));
+check("newState() 不传时间：createdAt 和 lastGrantAt 是一刻",
+  ns0.createdAt === ns0.lastGrantAt);
+check("newState() 之后计时正常：2 小时补 2 包",
+  Gacha.grantDuePacks(ns0, ns0.lastGrantAt + 2 * 3600 * 1000) === 2 && ns0.packs === 3);
+// 19b. 计时边界：59 分钟不到点，整 1 小时补 1 包
+const tg0 = Gacha.newState(1000000);
+check("59 分钟不到点：0 包", Gacha.grantDuePacks(tg0, 1000000 + 59 * 60 * 1000) === 0 && tg0.packs === 1);
+check("整 1 小时：补 1 包", Gacha.grantDuePacks(tg0, 1000000 + 60 * 60 * 1000) === 1 && tg0.packs === 2);
+// 19c. levelUpCard 坏等级：手改存档的负数/小数/0 级都不能花糖果（PR #8 O1）
+[-3, 50.5, 0].forEach(function (bad) {
+  const s = Gacha.newState(0); s.trainer.candy = 5;
+  Gacha.addToCollection(s, { id: 1, level: bad, hp: 100, atk: 50 });
+  const c = s.collection[1].cards[0];
+  check("坏等级 " + bad + "：返回 0、糖果不动、等级不动",
+    Gacha.levelUpCard(s, 1, c, 1) === 0 && s.trainer.candy === 5 && c.level === bad);
+});
+// 19d. 一次加经验跨两个里程碑：9 级 +1700 → 26 级，两个球各 3 个、糖果 +34
+const xp9 = Gacha.newState(0); xp9.trainer.level = 9; xp9.trainer.exp = 0;
+const xr9 = Gacha.addTrainerExp(xp9, 1700);
+check("9 级 +1700：连升 17 级到 26 级，两个里程碑各给 3 个球、糖果 +34",
+  xr9.levels === 17 && xp9.trainer.level === 26 && xp9.trainer.exp === 0 &&
+  xr9.items.great_ball === 3 && xr9.items.ultra_ball === 3 && xr9.candy === 34 && xp9.trainer.candy === 34);
+
 console.log(failures === 0 ? "\n全部通过 ✅" : "\n失败 " + failures + " 项 ❌");
 process.exit(failures === 0 ? 0 : 1);

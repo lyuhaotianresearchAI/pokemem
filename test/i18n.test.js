@@ -63,6 +63,25 @@ while ((m = re2.exec(html))) usedKeys.add(m[1]);
 check("index.html 用到的文案 key 中英都有",
   [...usedKeys].every(k => I18N.zh[k] && I18N.en[k]), [...usedKeys].join(","));
 
+// 扫 js/*.js：所有 t("key") 调用的 key 都要在中英字典里（PR #14 评审 O1）
+// i18nT 找不到 key 时会原样输出 key 本身、不报错，所以漏 key 不靠运行时发现——这个检查是唯一的兜底
+const jsFiles = fs.readdirSync(path.join(__dirname, "..", "js")).filter(f => f.endsWith(".js"));
+const tKeys = new Set();
+jsFiles.forEach(function (f) {
+  const src = fs.readFileSync(path.join(__dirname, "..", "js", f), "utf-8");
+  let m2;
+  const reT = /(?:^|[^\w])t\(["']([^"']+)["']\s*[,)]/g; // 前面不能是单词字符（排除 createElement("div")、split("、") 这类误伤）；后面可以是 ) 或 ,（带变量的调用）
+  while ((m2 = reT.exec(src))) tKeys.add(m2[1]);
+});
+check("js 里 t() 用到的文案 key 中英都有",
+  [...tKeys].every(k => I18N.zh[k] && I18N.en[k]), [...tKeys].join(","));
+check("t() 扫查没有漏扫（至少扫到 30 个 key）", tKeys.size >= 30, "扫到 " + tKeys.size);
+
+// 占位符一致：中英同一 key 里的 {变量} 必须同名，否则一侧会原样输出 {变量}
+function varsOf(s) { var mm = s.match(/\{(\w+)\}/g); return mm ? mm.sort().join(",") : ""; }
+const badPh = Object.keys(I18N.zh).filter(function (k) { return I18N.en[k] && varsOf(I18N.zh[k]) !== varsOf(I18N.en[k]); });
+check("中英占位符一致", badPh.length === 0, badPh.join(","));
+
 // 占位符替换
 check("占位符替换（中文）", i18nT("zh", "pityIn", { n: 12 }) === "再 12 抽保底 SSR+");
 check("占位符替换（英文）", i18nT("en", "pityIn", { n: 12 }) === "SSR+ guaranteed in 12 pulls");

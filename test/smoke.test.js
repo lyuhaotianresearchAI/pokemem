@@ -1,6 +1,6 @@
 // PokeMem 本地验证：node test/smoke.test.js
 // 目的：拆分 app.js 之后，确认 9 个 js/*.js 模块按 index.html 的顺序加载、
-// 启动迁移、开包/翻牌/卡册/详情（tab 切换与排序）/概率/页签/Debug 全链路都不报错、行为不变。
+// 启动迁移、计时补包（tick）、开包/翻牌/卡册/详情（tab 切换与排序）/概率/页签/Debug 全链路都不报错、行为不变。
 // 用最小 DOM 桩跑在 vm 里，不依赖浏览器、不联网；卡片立绘只拼 URL，不加载。
 // 桩的刻意限制：innerHTML 只解析 <button>（详情页 tab/排序按钮够用），
 // 其余 HTML 字符串不解析——只断言字符串内容，不假装它被渲染过。
@@ -424,6 +424,37 @@ check("E 丢卡糖果不含升级糖果",
   $E("pack-trainer").textContent);
 check("E 糖果总数是 8 + 2 = 10", E.PokeMem.ctx.state.trainer.candy === 10, "实际 " + E.PokeMem.ctx.state.trainer.candy);
 check("E 升级弹出提示", $E("toast").classList.contains("show") && $E("toast").textContent.indexOf("Lv.2") >= 0, $E("toast").textContent);
+
+// ---------- 场景 F：Task 17——tick 计时补包、满级训练师页、整 10 结晶兑换 ----------
+const F = runApp({});
+const ctxF = F.PokeMem.ctx;
+const $F = function (id) { return F.doc.getElementById(id); };
+$F("register-name-input").value = "小智";
+$F("register-submit-btn").click();
+$F("register-start-btn").click();
+check("F 注册成功：100 结晶、1 包", ctxF.state.trainer.crystals === 100 && ctxF.state.packs === 1);
+ctxF.state.lastGrantAt = Date.now() - 2 * 3600 * 1000; // 2 小时没开页面
+F.PokeMem.tick();
+check("F tick 补发 2 包", ctxF.state.packs === 3, "实际 " + ctxF.state.packs);
+check("F tick 后顶栏包数跟着变", $F("pack-count").textContent === "3");
+ctxF.state.debug = true;
+ctxF.state.lastGrantAt = Date.now() - 3 * 3600 * 1000;
+F.PokeMem.tick();
+check("F Debug 时 tick 不补包", ctxF.state.packs === 3, "实际 " + ctxF.state.packs);
+ctxF.state.debug = false;
+ctxF.state.trainer.level = 100;
+ctxF.state.trainer.exp = 0;
+F.PokeMem.renderTrainer();
+check("F 满级训练师经验条 100%", $F("trainer-exp-fill").style.width === "100%");
+check("F 满级训练师显示已满级", $F("trainer-exp-text").textContent === "已满级", $F("trainer-exp-text").textContent);
+ctxF.state.lastGrantAt = Date.now(); // 兑换前把计时归零，不然兑换会先结算 3 小时欠的包
+ctxF.state.trainer.crystals = 10;
+F.PokeMem.renderHeader();
+check("F 正好 10 结晶时兑换按钮可用", $F("exchange-btn").disabled === false);
+$F("exchange-btn").click();
+check("F 兑换后结晶归零、包 +1、按钮禁用",
+  ctxF.state.trainer.crystals === 0 && ctxF.state.packs === 4 && $F("exchange-btn").disabled === true,
+  "结晶 " + ctxF.state.trainer.crystals + "，包 " + ctxF.state.packs);
 
 console.log(failures === 0 ? "ALL PASS" : failures + " FAILURES");
 process.exit(failures === 0 ? 0 : 1);
