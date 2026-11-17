@@ -174,7 +174,7 @@ function runApp(initialStorage) {
   FILES.forEach(function (f) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, "..", f), "utf-8"), context, { filename: f });
   });
-  return { sandbox: sandbox, doc: doc, PokeMem: sandbox.PokeMem };
+  return { sandbox: sandbox, doc: doc, PokeMem: sandbox.PokeMem, context: context };
 }
 function byAttr(els, attr, val) {
   return els.filter(function (el) { return el.getAttribute(attr) === val; })[0];
@@ -394,6 +394,21 @@ D.PokeMem.renderPack();
 check("D 没升级没丢卡：只有经验",
   D.doc.getElementById("pack-trainer").textContent === "训练师 +43 经验",
   D.doc.getElementById("pack-trainer").textContent);
+
+// ---------- 场景 E：丢卡糖果回归（PR #11 评审 F1：差值里要扣掉升级糖果） ----------
+const E = runApp({});
+const $E = function (id) { return E.doc.getElementById(id); };
+$E("register-name-input").value = "小智";
+$E("register-submit-btn").click();
+$E("register-start-btn").click();
+E.PokeMem.ctx.state.trainer.exp = 99; // 这一包必定升 1 级（99 + 51 = 150）
+vm.runInContext("Math.random = function () { return 0; };", E.context); // 确定性包：9 张 #001 + 保底 #003；E 是最后一个场景，不用恢复
+$E("open-pack-btn").click();
+check("E 丢卡糖果不含升级糖果",
+  $E("pack-trainer").textContent === "训练师 +51 经验　·　升 1 级（+2 糖果）　·　超上限丢卡 +8 糖果",
+  $E("pack-trainer").textContent);
+check("E 糖果总数是 8 + 2 = 10", E.PokeMem.ctx.state.trainer.candy === 10, "实际 " + E.PokeMem.ctx.state.trainer.candy);
+check("E 升级弹出提示", $E("toast").classList.contains("show") && $E("toast").textContent.indexOf("Lv.2") >= 0, $E("toast").textContent);
 
 console.log(failures === 0 ? "ALL PASS" : failures + " FAILURES");
 process.exit(failures === 0 ? 0 : 1);

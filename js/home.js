@@ -47,9 +47,11 @@
   // ---------- 开包 ----------
   $("open-pack-btn").addEventListener("click", function () {
     if (ctx.state.packs <= 0) return;
-    var candyBefore = Gacha.ensureTrainer(ctx.state).candy; // 丢卡糖果要开包前后做差值（trainerExp 里只有升级糖果，PR #7 O1）
+    var candyBefore = Gacha.ensureTrainer(ctx.state).candy;
     ctx.currentPack = Gacha.drawPack(ctx.state, Math.random);
-    ctx.currentPack.trainerCandyGained = Gacha.ensureTrainer(ctx.state).candy - candyBefore;
+    // 差值里既有丢卡糖果也有升级糖果；升级糖果已在 trainerExp.candy 里单独显示，这里要扣掉（PR #11 评审 F1）
+    var lvCandy = ctx.currentPack.trainerExp ? ctx.currentPack.trainerExp.candy : 0;
+    ctx.currentPack.trainerCandyGained = Gacha.ensureTrainer(ctx.state).candy - candyBefore - lvCandy;
     PokeMem.save();
     renderHeader();
     renderPack();
