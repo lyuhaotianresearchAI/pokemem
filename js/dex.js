@@ -7,7 +7,6 @@
   var currentRow = null; // 当前详情页的宝可梦行（升级按钮重绘详情时用）
   function dexName(row) { return PokeMem.dexName(row); }
   function tierLabel(tier) { return PokeMem.tierLabel(tier); }
-  function typeLabel(types) { return PokeMem.typeLabel(types); }
 
   function renderCollection() {
     var grid = $("collection-grid");
@@ -41,7 +40,9 @@
     $("detail-img").src = imgUrl(r[0]);
     $("detail-img").style.display = "";
     $("detail-name").textContent = "#" + String(r[0]).padStart(3, "0") + " " + primary + "（" + secondary + "）";
-    $("detail-meta").innerHTML = typeLabel(r[3]) + "　·　" + PokeMem.mark(r[4]) + " " + r[4] + " " + tierLabel(r[4]) + "　·　" + t("perCardRate") + " " + r[5] + "%";
+    var typeIds = PokeMem.Types.parseTypes(r[3]);
+    $("detail-meta").innerHTML = typeIds.map(function (id) { return PokeMem.Types.typeChipHtml(id, PokeMem.lang()); }).join(" ") + "　·　" + PokeMem.mark(r[4]) + " " + r[4] + " " + tierLabel(r[4]) + "　·　" + t("perCardRate") + " " + r[5] + "%";
+    $("detail-weakness").innerHTML = t("detailWeakness") + "：" + PokeMem.Types.weaknessesFor(typeIds).map(function (w) { return PokeMem.Types.typeChipHtml(w.type, PokeMem.lang(), w.mult); }).join(" ");
     $("detail-owned").textContent = owned
       ? t("detailOwned", { n: owned.count, lv: owned.bestLv, hp: owned.bestHp, atk: owned.bestAtk })
       : t("detailMissing");

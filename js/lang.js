@@ -9,10 +9,6 @@
   function dexName(row) { return lang() === "en" ? row[2] : row[1]; } // 图鉴行 [编号, 中文, 英文, ...]
   function cardName(c) { return lang() === "en" ? c.en : c.name; } // 抽到的卡 {name: 中文, en: 英文}
   function tierLabel(tier) { return lang() === "en" ? TIER_EN[tier] : Gacha.TIER_LABEL[tier]; }
-  function typeLabel(types) {
-    if (lang() !== "en") return types;
-    return types.split("、").map(function (x) { return TYPE_EN[x] || x; }).join(", ");
-  }
   function applyLang() {
     document.documentElement.lang = lang() === "en" ? "en" : "zh-CN";
     document.title = t("docTitle");
@@ -34,7 +30,6 @@
   PokeMem.dexName = dexName;
   PokeMem.cardName = cardName;
   PokeMem.tierLabel = tierLabel;
-  PokeMem.typeLabel = typeLabel;
   PokeMem.applyLang = applyLang;
 
   $("lang-zh").addEventListener("click", function () { ctx.state.lang = "zh"; PokeMem.save(); applyLang(); });

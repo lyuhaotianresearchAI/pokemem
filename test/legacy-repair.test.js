@@ -57,6 +57,7 @@ sandbox.localStorage.setItem("pokemem-save-v1", JSON.stringify(state));
 run("js/store.js");
 run("js/util.js");
 run("js/lang.js");
+run("js/types.js");
 run("js/home.js");
 run("js/dex.js");
 run("js/rates.js");

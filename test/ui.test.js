@@ -122,5 +122,21 @@ check("Debug 加结晶改训练师结晶并刷新顶栏",
 check("Debug 加糖果改训练师糖果并刷新训练师页",
   debugJs.includes("[data-add-candy]") && debugJs.includes(".candy +=") && debugJs.includes("renderTrainer"));
 
+// Task 22：每只宝可梦的属性图标 + 弱点（一代克制表，图标网上找）
+const typesJs = fs.readFileSync(__dirname + "/../js/types.js", "utf8");
+const dexJs = fs.readFileSync(__dirname + "/../js/dex.js", "utf8");
+check("属性表是一代 15 属性（无钢/恶/妖精）",
+  typesJs.includes("TYPE_ORDER") && !typesJs.includes('"steel"') && !typesJs.includes('"dark"') && !typesJs.includes('"fairy"'));
+check("克制表有一代约定（幽灵克超能力、毒虫互克）",
+  typesJs.includes("psychic: 2, ghost: 2") &&
+  typesJs.includes("bug: 2") && typesJs.includes("poison: 2"));
+check("属性图标走网上图源（partywhale SVG）",
+  typesJs.includes("partywhale/pokemon-type-icons") && typesJs.includes("typeIconUrl"));
+check("详情页有弱点行", html.includes('id="detail-weakness"'));
+check("详情用属性图标 + 弱点图标",
+  dexJs.includes("typeChipHtml") && dexJs.includes("weaknessesFor") && dexJs.includes("detail-weakness"));
+check("属性徽章有样式", css.includes(".type-chip") && css.includes(".type-chip img"));
+check("旧的纯文字 typeLabel 已删", !fs.readFileSync(__dirname + "/../js/lang.js", "utf8").includes("typeLabel") && !dexJs.includes("typeLabel"));
+
 console.log(failures === 0 ? "\n全部通过 ✅" : "\n失败 " + failures + " 项 ❌");
 process.exit(failures === 0 ? 0 : 1);

@@ -10,7 +10,7 @@ const path = require("path");
 const GachaNode = require("../gacha.js"); // 仅用于造旧存档夹具
 
 const FILES = ["pokedex.js", "avatars.js", "i18n.js", "gacha.js", "js/store.js", "js/util.js",
-  "js/lang.js", "js/home.js", "js/dex.js", "js/rates.js", "js/tabs.js",
+  "js/lang.js", "js/types.js", "js/home.js", "js/dex.js", "js/rates.js", "js/tabs.js",
   "js/debug.js", "js/register.js", "js/trainer.js", "js/boot.js"];
 
 let failures = 0;
@@ -270,6 +270,15 @@ check("A 卡册 151 格", $A("collection-grid").children.length === 151, "实际
 $A("collection-grid").children[0].click();
 check("A 点格子开详情", $A("detail-modal").classList.contains("show"));
 check("A 详情是 #001", $A("detail-name").textContent.indexOf("#001") === 0, $A("detail-name").textContent);
+check("A 详情属性是图标（草、毒）",
+  $A("detail-meta").innerHTML.indexOf("grass.svg") >= 0 && $A("detail-meta").innerHTML.indexOf("poison.svg") >= 0,
+  $A("detail-meta").innerHTML);
+check("A 详情弱点是图标（虫×4、火、冰、飞行、超能力）",
+  $A("detail-weakness").innerHTML.indexOf("弱点") >= 0 &&
+  $A("detail-weakness").innerHTML.indexOf("bug.svg") >= 0 &&
+  $A("detail-weakness").innerHTML.indexOf("×4") >= 0 &&
+  $A("detail-weakness").innerHTML.indexOf("psychic.svg") >= 0,
+  $A("detail-weakness").innerHTML);
 $A("detail-close").click();
 check("A 关闭详情", !$A("detail-modal").classList.contains("show"));
 
