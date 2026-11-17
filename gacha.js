@@ -10,6 +10,8 @@
   "use strict";
   // 注意：这里不能写 typeof POKEDEX —— 本函数内 var POKEDEX 已提升，会屏蔽全局的 POKEDEX。
   // 浏览器里靠 pokedex.js 显式挂的 window.POKEDEX（顶层 const 不会自动挂 window），Node 里靠 require。
+  // Task 24：addToCollection 入册时调 root.CardProgress.normalizeCardProgress（卡片成长字段），
+  // 所以 card-progress.js 必须在第一次抽卡/入册前加载好（index.html 与各测试的加载列表里都在 gacha.js 之前）。
   var POKEDEX = root.POKEDEX || (typeof require !== "undefined" ? require("./pokedex.js").POKEDEX : []);
   if (!POKEDEX.length) throw new Error("PokeMem: 图鉴数据未加载，请确认 pokedex.js 在 gacha.js 之前引入");
   var PACK_SIZE = 10;
@@ -92,7 +94,7 @@
     sinceSSR = isSSRPlus ? 0 : sinceSSR + 1;
     var st = rollStats(row, rng);
     return { card: { id: row[0], name: row[1], en: row[2], types: row[3], tier: row[4], prob: row[5],
-             level: st.level, hp: st.hp, atk: st.atk }, sinceSSR: sinceSSR };
+             level: st.level, hp: st.hp, atk: st.atk, exp: 0, affection: 0 }, sinceSSR: sinceSSR };
   }
   function drawCard(state, rng) {
     var r = drawCardWithCounter(state.sinceSSR, rng);
@@ -113,7 +115,8 @@
   function addToCollection(state, card) {
     var e = state.collection[card.id] || (state.collection[card.id] = { count: 0, legacy: 0, bestLv: 0, bestHp: 0, bestAtk: 0, cards: [] });
     if (!e.cards) e.cards = [];
-    e.cards.push({ level: card.level, hp: card.hp, atk: card.atk, pulledAt: Date.now() });
+    e.cards.push(root.CardProgress.normalizeCardProgress({ level: card.level, hp: card.hp, atk: card.atk, pulledAt: Date.now(),
+      exp: card.exp, affection: card.affection }));
     e.count += 1;
     if (card.level > e.bestLv) { e.bestLv = card.level; e.bestHp = card.hp; e.bestAtk = card.atk; }
     dropLowest(state, card.id, e); // 超过 5 张就去掉 Lv 最低的一张（新抽到的 Lv 最低时，去掉的就是它自己）
@@ -208,7 +211,7 @@
       var isSSRPlus = SSR_PLUS.indexOf(row[4]) >= 0;
       sinceSSR = isSSRPlus ? 0 : sinceSSR + 1;
       last = { id: row[0], name: row[1], en: row[2], types: row[3], tier: row[4], prob: row[5],
-               level: st.level, hp: st.hp, atk: st.atk, pity: true };
+               level: st.level, hp: st.hp, atk: st.atk, exp: 0, affection: 0, pity: true };
     }
     cards.push(last);
     var result = shuffle(cards, rng);
@@ -476,7 +479,7 @@
     exchangeCrystalsForPack: exchangeCrystalsForPack, addTrainerExp: addTrainerExp,
     levelUpCard: levelUpCard,
     SR_PLUS: SR_PLUS, SSR_PLUS: SSR_PLUS, entry: entry, totalWeight: totalWeight,
-    drawFromPool: drawFromPool, drawAny: drawAny, rollStats: rollStats, drawCard: drawCard,
+    drawFromPool: drawFromPool, drawAny: drawAny, rollStats: rollStats, statsForLevel: statsForLevel, drawCard: drawCard,
     drawPack: drawPack, drawPackPreview: drawPackPreview, settlePack: settlePack, newState: newState, grantDuePacks: grantDuePacks,
     msToNextPack: msToNextPack, tierTotals: tierTotals, ownedCount: ownedCount,
     addToCollection: addToCollection, migrateCollection: migrateCollection,

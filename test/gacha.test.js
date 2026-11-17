@@ -3,6 +3,7 @@
 const { POKEDEX } = require("../pokedex.js");
 const { AVATARS } = require("../avatars.js");
 const Gacha = require("../gacha.js");
+const CardProgress = require("../card-progress.js");
 
 let failures = 0;
 function check(name, cond, detail) {
@@ -491,6 +492,77 @@ const onesNB = packNB.filter(function (c) { return c.id === 1; });
 check("NEW 在第一张展示的 #001 上，其余 8 张没有",
   onesNB.length === 9 && onesNB[0].isNew === true && onesNB.slice(1).every(function (c) { return !c.isNew; }));
 check("NEW 总数还是新物种数（#001 + #003）", packNB.filter(function (c) { return c.isNew; }).length === 2);
+
+// 20. Task 24：卡片经验值与亲密度（遭遇战）
+check("亲密度等级：0/9 点 0 级，10 点 1 级，99 点 9 级，100 点 10 级，150 点还是 10 级",
+  CardProgress.affectionLevel(0) === 0 && CardProgress.affectionLevel(9) === 0 && CardProgress.affectionLevel(10) === 1 &&
+  CardProgress.affectionLevel(19) === 1 && CardProgress.affectionLevel(99) === 9 && CardProgress.affectionLevel(100) === 10 &&
+  CardProgress.affectionLevel(150) === 10);
+check("亲密度等级：非法值按 0 级",
+  CardProgress.affectionLevel(-5) === 0 && CardProgress.affectionLevel(NaN) === 0 && CardProgress.affectionLevel("10") === 0);
+check("升一级要的经验 = 当前等级：1 级 1 点、50 级 50 点、99 级 99 点，100 级 0 点",
+  CardProgress.cardExpNeeded(1) === 1 && CardProgress.cardExpNeeded(50) === 50 && CardProgress.cardExpNeeded(99) === 99 &&
+  CardProgress.cardExpNeeded(100) === 0 && CardProgress.cardExpNeeded(0) === 0);
+check("暴击率 = 亲密度等级 × 2%：0 点 0%、10 点 2%、55 点 10%、100 点 20%",
+  CardProgress.critRateForCard({ affection: 0 }) === 0 && CardProgress.critRateForCard({ affection: 10 }) === 2 &&
+  CardProgress.critRateForCard({ affection: 55 }) === 10 && CardProgress.critRateForCard({ affection: 100 }) === 20 &&
+  CardProgress.critRateForCard(null) === 0 && CardProgress.critRateForCard({}) === 0);
+// 20a. 新抽的卡自带 exp/affection 0（抽卡与保底分支都覆盖：rng 0 → 9 张 #001 + 保底 #003）
+const s24 = Gacha.newState(0); s24.packs = 1;
+const pack24 = Gacha.drawPack(s24, () => 0);
+check("新抽的 10 张卡都有 exp 0 / affection 0",
+  pack24.length === 10 && pack24.every(function (c) { return c.exp === 0 && c.affection === 0; }));
+check("保底那张也有 exp 0 / affection 0", pack24.some(function (c) { return c.pity && c.exp === 0 && c.affection === 0; }));
+// 20b. 入册时存下 exp/affection，缺字段的按 0 存
+const s24b = Gacha.newState(0);
+Gacha.addToCollection(s24b, { id: 1, level: 50, hp: 151, atk: 100, exp: 35, affection: 12 });
+const c24b = s24b.collection[1].cards[0];
+check("入册存下 exp 35 / affection 12", c24b.exp === 35 && c24b.affection === 12);
+Gacha.addToCollection(s24b, { id: 1, level: 40, hp: 130, atk: 80 });
+const c24c = s24b.collection[1].cards[1];
+check("缺字段的卡入册按 0 存", c24c.exp === 0 && c24c.affection === 0);
+// 20c. 老卡补字段：缺失的补 0，已有的不动，幂等
+const s24c = Gacha.newState(0);
+Gacha.addToCollection(s24c, { id: 1, level: 50, hp: 151, atk: 100 });
+delete s24c.collection[1].cards[0].exp;
+delete s24c.collection[1].cards[0].affection;
+Gacha.addToCollection(s24c, { id: 1, level: 60, hp: 170, atk: 110, exp: 35, affection: 12 });
+check("补字段：缺失的补 0，已有的不动",
+  CardProgress.repairCardProgress(s24c) === 1 &&
+  s24c.collection[1].cards[0].exp === 0 && s24c.collection[1].cards[0].affection === 0 &&
+  s24c.collection[1].cards[1].exp === 35 && s24c.collection[1].cards[1].affection === 12);
+check("补字段幂等：第二遍返回 0", CardProgress.repairCardProgress(s24c) === 0);
+// 20d. 经验结算：加经验、升级、溢出顺延、满级封顶
+function card24(level, exp) {
+  const s = Gacha.newState(0);
+  Gacha.addToCollection(s, { id: 1, level: level, hp: 151, atk: 100, exp: exp, affection: 0 });
+  return { s: s, c: s.collection[1].cards[0] };
+}
+const t24a = card24(50, 0);
+check("50 级 +10 经验：不升级，exp 10",
+  CardProgress.applyExpGain(t24a.s, 1, t24a.c, 10) === 0 && t24a.c.level === 50 && t24a.c.exp === 10);
+const t24b = card24(50, 49);
+const st51 = Gacha.rollStats(POKEDEX[0], () => (51 - 5) / (100 - 5));
+check("50 级 49 点 +5：升 1 级到 51，exp 剩 4，HP/攻击按 51 级重算",
+  CardProgress.applyExpGain(t24b.s, 1, t24b.c, 5) === 1 && t24b.c.level === 51 && t24b.c.exp === 4 &&
+  t24b.c.hp === st51.hp && t24b.c.atk === st51.atk);
+const t24c = card24(50, 0);
+check("50 级 +101：连升 2 级到 52，exp 0",
+  CardProgress.applyExpGain(t24c.s, 1, t24c.c, 101) === 2 && t24c.c.level === 52 && t24c.c.exp === 0);
+const t24d = card24(99, 98);
+check("99 级 98 点 +5：升到 100 级，exp 清零",
+  CardProgress.applyExpGain(t24d.s, 1, t24d.c, 5) === 1 && t24d.c.level === 100 && t24d.c.exp === 0);
+const t24e = card24(100, 0);
+check("100 级不再加经验", CardProgress.applyExpGain(t24e.s, 1, t24e.c, 50) === 0 && t24e.c.exp === 0);
+const t24f = card24(50, 10);
+check("非法经验量按 0 处理", CardProgress.applyExpGain(t24f.s, 1, t24f.c, 0) === 0 && CardProgress.applyExpGain(t24f.s, 1, t24f.c, -5) === 0 && CardProgress.applyExpGain(t24f.s, 1, t24f.c, NaN) === 0 && t24f.c.exp === 10);
+check("不在卡册里的卡不加经验", CardProgress.applyExpGain(t24f.s, 1, { level: 50, exp: 0 }, 10) === 0);
+// 20e. 糖果升级保留经验：50 级 35/50 喂 1 颗 → 51 级 35/51
+const s24e = Gacha.newState(0); s24e.trainer.candy = 5;
+Gacha.addToCollection(s24e, { id: 1, level: 50, hp: 151, atk: 100, exp: 35, affection: 0 });
+const c24e = s24e.collection[1].cards[0];
+check("喂糖果升 1 级：经验 35 原样保留，糖果 -1",
+  Gacha.levelUpCard(s24e, 1, c24e, 1) === 1 && c24e.level === 51 && c24e.exp === 35 && s24e.trainer.candy === 4);
 
 console.log(failures === 0 ? "\n全部通过 ✅" : "\n失败 " + failures + " 项 ❌");
 process.exit(failures === 0 ? 0 : 1);

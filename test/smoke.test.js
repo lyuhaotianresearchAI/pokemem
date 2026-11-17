@@ -9,7 +9,7 @@ const fs = require("fs");
 const path = require("path");
 const GachaNode = require("../gacha.js"); // 仅用于造旧存档夹具
 
-const FILES = ["pokedex.js", "avatars.js", "i18n.js", "gacha.js", "js/store.js", "js/util.js",
+const FILES = ["pokedex.js", "avatars.js", "i18n.js", "card-progress.js", "gacha.js", "js/store.js", "js/util.js",
   "js/lang.js", "js/types.js", "js/home.js", "js/dex.js", "js/rates.js", "js/tabs.js",
   "js/debug.js", "js/register.js", "js/trainer.js", "js/boot.js"];
 

@@ -93,7 +93,7 @@ sandbox.window = sandbox;
 sandbox.globalThis = sandbox;
 vm.createContext(sandbox);
 
-["pokedex.js", "i18n.js", "gacha.js", "js/store.js", "js/util.js", "js/lang.js", "js/home.js"].forEach(f => {
+["pokedex.js", "i18n.js", "card-progress.js", "gacha.js", "js/store.js", "js/util.js", "js/lang.js", "js/home.js"].forEach(f => {
   vm.runInContext(fs.readFileSync(__dirname + "/../" + f, "utf8"), sandbox, { filename: f });
 });
 

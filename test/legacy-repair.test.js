@@ -46,6 +46,7 @@ function run(file) { vm.runInContext(fs.readFileSync(__dirname + "/../" + file, 
 run("pokedex.js");
 run("avatars.js");
 run("i18n.js");
+run("card-progress.js");
 run("gacha.js");
 
 // v1.5 之前的存档：小火龙 8 张，只有汇总，没有 cards/legacy
@@ -83,6 +84,8 @@ check("不再显示旧卡无明细的提示", !html.includes("无单独数值"))
 // 存档本身也被修好了：上限执行后只剩 5 条明细，legacy 清零
 const saved = JSON.parse(sandbox.localStorage.getItem("pokemem-save-v1"));
 check("存档里小火龙只剩 5 条明细", saved.collection[4].cards.length === 5);
+check("启动补字段：迁移后的 5 张卡都有 exp 0 / affection 0（Task 24，boot 全链路）",
+  saved.collection[4].cards.every(function (c) { return c.exp === 0 && c.affection === 0; }));
 check("存档 legacy 已清零", saved.collection[4].legacy === 0);
 check("存档记了去掉 3 张", saved.collection[4].droppedCount === 3);
 

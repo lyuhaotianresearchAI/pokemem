@@ -45,6 +45,7 @@ function run(file) { vm.runInContext(fs.readFileSync(__dirname + "/../" + file, 
 run("pokedex.js");
 run("avatars.js");
 run("i18n.js");
+run("card-progress.js");
 run("gacha.js");
 
 // 造存档：尼多力诺（#033）7 张卡，Lv 分别是 71/40/90/65/55/88/30
