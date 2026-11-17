@@ -62,6 +62,7 @@ run("js/rates.js");
 run("js/tabs.js");
 run("js/debug.js");
 run("js/register.js");
+run("js/trainer.js");
 run("js/boot.js");
 
 const grid = els["collection-grid"];

@@ -121,6 +121,20 @@ button { font-family: inherit; }
 #register-name-input:focus { border-color: #ff8a75; box-shadow: 0 0 0 3px rgba(255,138,117,.25); }
 .register-error { color: #c00; font-size: 14px; min-height: 20px; margin: 4px 0; }
 
+/* 训练师页 */
+.trainer-card { background: #fff; border-radius: 18px; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+.trainer-card h2 { margin: 4px 0; text-align: center; }
+.trainer-card h3 { margin: 16px 0 8px; font-size: 16px; }
+.exp-bar { height: 12px; background: #eee; border-radius: 999px; overflow: hidden; margin: 8px 0 4px; }
+.exp-fill { height: 100%; background: linear-gradient(90deg, #4a90d9, #9b59b6); border-radius: 999px; transition: width .3s ease; }
+.trainer-items { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 8px 0; }
+.trainer-item { background: #fafafa; border: 1px solid #eee; border-radius: 10px; padding: 8px 10px; font-size: 14px; display: flex; justify-content: space-between; }
+.trainer-item.zero { opacity: .45; }
+.trainer-rename { display: flex; gap: 8px; margin-top: 12px; }
+.trainer-rename input { flex: 1; min-width: 0; padding: 10px 14px; font-size: 15px; border: 1px solid #f0c9c0; border-radius: 999px; outline: none; }
+.trainer-rename input:focus { border-color: #ff8a75; box-shadow: 0 0 0 3px rgba(255,138,117,.25); }
+.trainer-rename button { padding: 10px 18px; border-radius: 999px; border: none; background: linear-gradient(120deg, #ff5f6d, #e3350d); color: #fff; font-size: 15px; cursor: pointer; flex-shrink: 0; }
+
 /* 稀有度标记：画在稀有度文字边上 */
 .rarity-mark { letter-spacing: 1px; }
 .mark-black { color: #1a1a1a; }

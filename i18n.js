@@ -67,7 +67,17 @@ var I18N = {
     registerErrEmpty: "名字不能为空",
     registerErrTooLong: "名字最多 12 个字",
     registerWelcome: "欢迎，{name}！100 梦想结晶已到账（= 10 包卡包），每小时还会再送 1 包。",
-    registerStart: "开始冒险"
+    registerStart: "开始冒险",
+    tabTrainer: "训练师",
+    trainerCrystals: "梦想结晶",
+    trainerCandy: "糖果",
+    trainerItems: "道具",
+    trainerRenamePh: "改个名字（1–12 个字）",
+    trainerRenameBtn: "改名",
+    trainerLevel: "Lv.{level}",
+    trainerExp: "经验 {exp} / 100",
+    trainerExpMax: "已满级",
+    trainerNoName: "未注册"
   },
   en: {
     subtitle: "Pokémon 151 Gacha",
@@ -135,11 +145,32 @@ var I18N = {
     registerErrEmpty: "Name can't be empty",
     registerErrTooLong: "Name must be 12 characters or fewer",
     registerWelcome: "Welcome, {name}! 100 Dream Crystals claimed (= 10 packs), plus 1 pack every hour.",
-    registerStart: "Start adventuring"
+    registerStart: "Start adventuring",
+    tabTrainer: "Trainer",
+    trainerCrystals: "Dream Crystals",
+    trainerCandy: "Candy",
+    trainerItems: "Items",
+    trainerRenamePh: "New name (1–12 characters)",
+    trainerRenameBtn: "Rename",
+    trainerLevel: "Lv.{level}",
+    trainerExp: "EXP {exp} / 100",
+    trainerExpMax: "Max level",
+    trainerNoName: "Not registered"
   }
 };
 var TYPE_EN = { "草": "Grass", "毒": "Poison", "火": "Fire", "水": "Water", "虫": "Bug", "飞行": "Flying", "一般": "Normal", "电": "Electric", "地面": "Ground", "格斗": "Fighting", "超能力": "Psychic", "岩石": "Rock", "冰": "Ice", "幽灵": "Ghost", "龙": "Dragon" };
 var TIER_EN = { N: "Common", R: "Rare", SR: "Super Rare", SSR: "Legendary", UR: "Mythical", MR: "Phantom" };
+// 道具名（训练师页物品栏用）
+var ITEM_NAME = {
+  poke_ball: { zh: "精灵球", en: "Poké Ball" },
+  great_ball: { zh: "超级球", en: "Great Ball" },
+  ultra_ball: { zh: "高级球", en: "Ultra Ball" },
+  fire_stone: { zh: "火之石", en: "Fire Stone" },
+  water_stone: { zh: "水之石", en: "Water Stone" },
+  thunder_stone: { zh: "雷之石", en: "Thunder Stone" },
+  leaf_stone: { zh: "叶之石", en: "Leaf Stone" },
+  moon_stone: { zh: "月之石", en: "Moon Stone" }
+};
 // 稀有度标记（画在稀有度文字边上）：N 黑点 1 个、R 黑星 1 颗、SR 黑星 2 颗、
 // SSR 金星 1 颗、UR 金星 2 颗、MR 粉星 1 颗
 var RARITY_MARK = {
@@ -159,5 +190,5 @@ function i18nT(lang, key, vars) {
   if (vars) Object.keys(vars).forEach(function (k) { s = s.split("{" + k + "}").join(String(vars[k])); });
   return s;
 }
-if (typeof window !== "undefined") { window.I18N = I18N; window.TYPE_EN = TYPE_EN; window.TIER_EN = TIER_EN; window.i18nT = i18nT; window.RARITY_MARK = RARITY_MARK; window.rarityMarkHtml = rarityMarkHtml; }
-if (typeof module !== "undefined") module.exports = { I18N: I18N, TYPE_EN: TYPE_EN, TIER_EN: TIER_EN, i18nT: i18nT, RARITY_MARK: RARITY_MARK, rarityMarkHtml: rarityMarkHtml };
+if (typeof window !== "undefined") { window.I18N = I18N; window.TYPE_EN = TYPE_EN; window.TIER_EN = TIER_EN; window.ITEM_NAME = ITEM_NAME; window.i18nT = i18nT; window.RARITY_MARK = RARITY_MARK; window.rarityMarkHtml = rarityMarkHtml; }
+if (typeof module !== "undefined") module.exports = { I18N: I18N, TYPE_EN: TYPE_EN, TIER_EN: TIER_EN, ITEM_NAME: ITEM_NAME, i18nT: i18nT, RARITY_MARK: RARITY_MARK, rarityMarkHtml: rarityMarkHtml };

@@ -1,7 +1,8 @@
 // PokeMem 中英切换验证：node test/i18n.test.js
 // 检查：中英 key 完全一致、所有属性与稀有度都有英文翻译、占位符替换正常
 const { POKEDEX } = require("../pokedex.js");
-const { I18N, TYPE_EN, TIER_EN, i18nT } = require("../i18n.js");
+const { I18N, TYPE_EN, TIER_EN, ITEM_NAME, i18nT } = require("../i18n.js");
+const Gacha = require("../gacha.js");
 
 let failures = 0;
 function check(name, cond, detail) {
@@ -33,6 +34,12 @@ check("全部稀有度都有英文", tiers.every(x => TIER_EN[x]), tiers.join(",
 const regKeys = ["registerTitle", "registerDesc", "registerNamePh", "registerHint", "registerSubmit", "registerErrEmpty", "registerErrTooLong", "registerWelcome", "registerStart"];
 check("注册文案中英都有", regKeys.every(k => I18N.zh[k] && I18N.en[k]), regKeys.join(","));
 check("欢迎文案占位符", i18nT("zh", "registerWelcome", { name: "小智" }).indexOf("小智") >= 0);
+
+// 训练师页文案中英都有，8 种道具都有中英名
+const trainerKeys = ["tabTrainer", "trainerCrystals", "trainerCandy", "trainerItems", "trainerRenamePh", "trainerRenameBtn", "trainerLevel", "trainerExp", "trainerExpMax", "trainerNoName"];
+check("训练师页文案中英都有", trainerKeys.every(k => I18N.zh[k] && I18N.en[k]), trainerKeys.join(","));
+check("8 种道具都有中英名",
+  Gacha.ITEM_IDS.every(id => ITEM_NAME[id] && ITEM_NAME[id].zh && ITEM_NAME[id].en), Gacha.ITEM_IDS.join(","));
 
 // 占位符替换
 check("占位符替换（中文）", i18nT("zh", "pityIn", { n: 12 }) === "再 12 抽保底 SSR+");

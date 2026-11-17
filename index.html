@@ -93,12 +93,38 @@
     <p class="rule" data-i18n="ratesRule2">等级：最低等级～100 随机；HP = ⌊(2×HP种族值+93)×等级÷100⌋+等级+10；攻击 = ⌊(2×攻击种族值+93)×等级÷100⌋+5。</p>
     <p class="rule" data-i18n="ratesRule3">概率与数值来源：图鉴表「图鉴151」与另一位工程师的抽卡逻辑文档；图片为 PokeAPI 官方立绘，需联网加载。</p>
   </section>
+  <!-- 训练师页 -->
+  <section id="tab-trainer" class="tab-page">
+    <div class="trainer-card">
+      <h2 id="trainer-name"></h2>
+      <p class="hint" id="trainer-level"></p>
+      <div class="exp-bar"><div id="trainer-exp-fill" class="exp-fill"></div></div>
+      <p class="hint" id="trainer-exp-text"></p>
+      <div class="stat-row">
+        <div class="stat"><div class="stat-num" id="trainer-crystals">0</div><div class="stat-label" data-i18n="trainerCrystals">梦想结晶</div></div>
+        <div class="stat"><div class="stat-num" id="trainer-candy">0</div><div class="stat-label" data-i18n="trainerCandy">糖果</div></div>
+        <div class="stat"><div class="stat-num" id="trainer-packs">0</div><div class="stat-label" data-i18n="packLabel">拥有卡包</div></div>
+      </div>
+      <div class="stat-row">
+        <div class="stat"><div class="stat-num" id="trainer-dex">0 / 151</div><div class="stat-label" data-i18n="dexLabel">图鉴收集</div></div>
+        <div class="stat"><div class="stat-num" id="trainer-draws">0</div><div class="stat-label" data-i18n="drawsLabel">总抽卡数</div></div>
+      </div>
+      <h3 data-i18n="trainerItems">道具</h3>
+      <div id="trainer-items" class="trainer-items"></div>
+      <div class="trainer-rename">
+        <input id="trainer-rename-input" type="text" maxlength="12" placeholder="改个名字（1–12 个字）" data-i18n-ph="trainerRenamePh">
+        <button id="trainer-rename-btn" data-i18n="trainerRenameBtn">改名</button>
+      </div>
+      <p class="register-error" id="trainer-rename-error"></p>
+    </div>
+  </section>
 </main>
 
 <nav class="tabbar">
   <button data-tab="home" class="active">🎁 <span data-i18n="tabHome">开包</span></button>
   <button data-tab="dex">📖 <span data-i18n="tabDex">卡册</span></button>
   <button data-tab="rates">📊 <span data-i18n="tabRates">概率</span></button>
+  <button data-tab="trainer">👤 <span data-i18n="tabTrainer">训练师</span></button>
 </nav>
 
 <!-- 开包结果 -->
@@ -157,6 +183,7 @@
 <script src="js/tabs.js"></script>
 <script src="js/debug.js"></script>
 <script src="js/register.js"></script>
+<script src="js/trainer.js"></script>
 <script src="js/boot.js"></script>
 </body>
 </html>

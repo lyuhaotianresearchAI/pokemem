@@ -23,6 +23,7 @@
     PokeMem.renderHeader();
     PokeMem.renderCollection();
     PokeMem.renderRates();
+    PokeMem.renderTrainer();
     if (ctx.currentPack) PokeMem.renderPack();
   }
 

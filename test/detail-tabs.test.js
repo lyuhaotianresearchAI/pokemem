@@ -62,6 +62,7 @@ run("js/rates.js");
 run("js/tabs.js");
 run("js/debug.js");
 run("js/register.js");
+run("js/trainer.js");
 run("js/boot.js"); // 启动：首次渲染（applyLang 会渲染卡册格子）
 
 // 卡册格子里第 33 只就是尼多力诺（151 只按编号顺序），点它

@@ -11,7 +11,7 @@ const GachaNode = require("../gacha.js"); // 仅用于造旧存档夹具
 
 const FILES = ["pokedex.js", "i18n.js", "gacha.js", "js/store.js", "js/util.js",
   "js/lang.js", "js/home.js", "js/dex.js", "js/rates.js", "js/tabs.js",
-  "js/debug.js", "js/register.js", "js/boot.js"];
+  "js/debug.js", "js/register.js", "js/trainer.js", "js/boot.js"];
 
 let failures = 0;
 function check(name, cond, detail) {
@@ -135,8 +135,8 @@ function registerSelectors(doc) {
     Object.keys(attrs).forEach(function (k) { el.setAttribute(k, attrs[k]); });
     return el;
   }
-  doc._bySelector["[data-tab]"] = ["home", "dex", "rates"].map(function (t) { return btn({ "data-tab": t }); });
-  doc._bySelector[".tab-page"] = ["home", "dex", "rates"].map(function (t) {
+  doc._bySelector["[data-tab]"] = ["home", "dex", "rates", "trainer"].map(function (t) { return btn({ "data-tab": t }); });
+  doc._bySelector[".tab-page"] = ["home", "dex", "rates", "trainer"].map(function (t) {
     const s = makeEl(doc, "section"); s.id = "tab-" + t; return s;
   });
   doc._bySelector[".tab-page"][0].classList.add("active");
@@ -144,7 +144,8 @@ function registerSelectors(doc) {
   doc._bySelector["[data-owned-filter]"] = ["ALL", "OWNED", "MISSING"].map(function (t) { return btn({ "data-owned-filter": t }); });
   doc._bySelector["[data-add-packs]"] = ["1", "10", "100"].map(function (n) { return btn({ "data-add-packs": n }); });
   doc._bySelector["[data-i18n]"] = ["tabHome", "tabDex", "tabRates", "subtitle",
-    "registerTitle", "registerDesc", "registerHint", "registerSubmit", "registerStart"].map(function (k) {
+    "registerTitle", "registerDesc", "registerHint", "registerSubmit", "registerStart",
+    "tabTrainer", "trainerCrystals", "trainerCandy", "trainerItems", "trainerRenameBtn"].map(function (k) {
     const el = makeEl(doc, "span"); el.setAttribute("data-i18n", k); return el;
   });
   const ph = makeEl(doc, "input");
@@ -205,6 +206,24 @@ check("A 注册成功显示欢迎",
   $A("register-welcome-text").textContent.indexOf("小智") >= 0 && $A("register-welcome").style.display !== "none");
 $A("register-start-btn").click();
 check("A 点开始冒险关闭注册浮层", !$A("register-overlay").classList.contains("show"));
+byAttr(A.doc._bySelector["[data-tab]"], "data-tab", "trainer").click();
+check("A 切训练师页", A.doc._bySelector[".tab-page"][3].classList.contains("active"));
+check("A 训练师页显示名字和 100 结晶",
+  $A("trainer-name").textContent === "小智" && $A("trainer-crystals").textContent === "100");
+check("A 训练师页经验 0/100", $A("trainer-exp-text").textContent.indexOf("0") >= 0);
+check("A 训练师页显示 3 个精灵球",
+  $A("trainer-items").innerHTML.indexOf("精灵球") >= 0 && $A("trainer-items").innerHTML.indexOf("×3") >= 0);
+$A("trainer-rename-input").value = "";
+$A("trainer-rename-btn").click();
+check("A 改名空名字报错、名字不变",
+  $A("trainer-rename-error").textContent.length > 0 && $A("trainer-name").textContent === "小智");
+$A("trainer-rename-input").value = "小茂";
+$A("trainer-rename-btn").click();
+check("A 改名成功、结晶还是 100",
+  $A("trainer-name").textContent === "小茂" && $A("trainer-rename-error").textContent === "" &&
+  ctxA.state.trainer.crystals === 100);
+byAttr(A.doc._bySelector["[data-tab]"], "data-tab", "home").click();
+check("A 切回开包页", A.doc._bySelector[".tab-page"][0].classList.contains("active"));
 check("A 顶栏已渲染", $A("pack-count").textContent === "1" && $A("owned-count").textContent === "0 / 151");
 
 const i18nTabHome = byAttr(A.doc._bySelector["[data-i18n]"], "data-i18n", "tabHome");
