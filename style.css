@@ -178,13 +178,49 @@ button { font-family: inherit; }
 .scene-types .type-chip img { width: 22px; height: 22px; }
 .scene-base { font-size: 12px; color: #666; }
 .scene-lock { font-size: 12px; color: #e3350d; margin-top: 4px; }
-.team-cell { position: relative; background: #fff; border: 2px solid transparent; border-radius: 14px; padding: 6px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,.08); text-align: center; }
-.team-cell.selected { border-color: #e3350d; background: #fff0ec; }
+.team-cell { position: relative; background: var(--tb, #fff); border: 2px solid transparent; border-radius: 14px; padding: 6px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,.08); text-align: center; }
+.team-cell.selected { border-color: #e3350d; }
 .team-cell img { width: 100%; aspect-ratio: 1; object-fit: contain; display: block; }
 .team-name { font-size: 13px; font-weight: bold; color: #333; }
-.team-stat { font-size: 12px; color: #666; }
-.team-affection { font-size: 12px; color: #e3350d; }
-.team-check { position: absolute; top: 4px; right: 8px; font-size: 16px; font-weight: bold; color: #e3350d; }
+/* 格子左上角属性标（只要图标）、右上角×几（有几张卡，选了的打勾变红） */
+.team-cell .team-types { position: absolute; top: 4px; left: 6px; display: flex; gap: 2px; z-index: 2; }
+.team-cell .team-types .type-chip { background: transparent; border: none; padding: 0; }
+.team-cell .team-types .type-chip img { width: 20px; height: 20px; border: 2px solid rgba(255,255,255,.95); box-shadow: 0 1px 3px rgba(0,0,0,.18); }
+.team-count { position: absolute; top: 4px; right: 6px; background: rgba(0,0,0,.55); color: #fff; font-size: 12px; font-weight: bold; padding: 2px 7px; border-radius: 999px; z-index: 2; }
+.team-count.selected { background: #e3350d; }
+/* 队伍精灵球：6 个槽；空球关着，选了的球打开、宝可梦像摆件一样站在球上；点已选的取消 */
+.team-balls { display: flex; justify-content: center; gap: 10px; margin: 12px 0 24px; }
+.team-ball { position: relative; width: 60px; height: 110px; padding: 0; border: none; background: none; cursor: default; flex-shrink: 0; }
+.team-ball.open { cursor: pointer; }
+/* 球身 60×60，贴着槽底（留 18px 给等级字）；球盖掀开后翻到宝可梦身后上方，像摆件的红壳 */
+.team-ball .ball-top, .team-ball .ball-bottom { position: absolute; left: 0; width: 100%; height: 30px; }
+.team-ball .ball-top { bottom: 48px; background: linear-gradient(#ff6b5e, #e3350d); border: 3px solid #222; border-bottom: none; border-radius: 999px 999px 0 0; z-index: 1; transform-origin: 50% 100%; transition: transform .25s ease; }
+.team-ball .ball-top::before { content: ""; position: absolute; left: 8px; top: 3px; width: 10px; height: 6px; border-radius: 50%; background: rgba(255,255,255,.6); transform: rotate(-25deg); }
+.team-ball .ball-bottom { bottom: 18px; background: linear-gradient(#fff, #e8e8e8); border: 3px solid #222; border-top: none; border-radius: 0 0 999px 999px; z-index: 2; }
+.team-ball .ball-band { position: absolute; left: 0; right: 0; bottom: 45px; height: 6px; background: #222; z-index: 4; transition: opacity .2s ease; }
+.team-ball .ball-btn { position: absolute; left: 50%; bottom: 39px; width: 16px; height: 16px; margin-left: -8px; background: #fff; border: 3px solid #222; border-radius: 50%; z-index: 5; transition: opacity .2s ease; }
+.team-ball .ball-mon { position: absolute; left: 50%; bottom: 30px; width: 54px; height: 54px; margin-left: -27px; object-fit: contain; z-index: 3; opacity: 0; transform: scale(.5) translateY(10px); transition: opacity .2s ease, transform .25s ease; pointer-events: none; }
+.team-ball.open .ball-top { transform: translateY(-30px) rotate(-28deg); }
+.team-ball.open .ball-band, .team-ball.open .ball-btn { opacity: 0; }
+.team-ball.open .ball-mon { opacity: 1; transform: scale(1) translateY(0); }
+.team-ball .ball-lv { position: absolute; left: 0; right: 0; bottom: 0; font-size: 11px; color: #666; text-align: center; }
+/* 悬停选卡 tab：格子右边浮出，列出该种的全部卡 */
+.team-grid-wrap { position: relative; }
+.team-pick-tab { position: absolute; width: 190px; background: #fff; border-radius: 14px; box-shadow: 0 8px 24px rgba(0,0,0,.18); padding: 8px; z-index: 30; }
+.team-pick-title { font-size: 12px; font-weight: bold; color: #333; margin-bottom: 6px; }
+.team-pick-opt { display: block; width: 100%; text-align: left; padding: 6px 8px; margin-top: 4px; border: 1px solid #f0c9c0; background: #fff; border-radius: 10px; font-size: 12px; cursor: pointer; }
+.team-pick-opt:hover { background: #fff0ec; }
+.team-pick-opt.selected { border-color: #e3350d; background: #fff0ec; font-weight: bold; }
+@media (max-width: 480px) {
+  .team-ball { width: 48px; height: 92px; }
+  .team-ball .ball-top, .team-ball .ball-bottom { height: 24px; }
+  .team-ball .ball-top { bottom: 40px; }
+  .team-ball .ball-bottom { bottom: 16px; }
+  .team-ball .ball-band { bottom: 37px; }
+  .team-ball .ball-btn { bottom: 32px; width: 13px; height: 13px; margin-left: -6px; }
+  .team-ball .ball-mon { width: 44px; height: 44px; margin-left: -22px; bottom: 24px; }
+  .team-ball.open .ball-top { transform: translateY(-24px) rotate(-28deg); }
+}
 .encounter-status-card { background: #fff; border-radius: 18px; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,.08); }
 .encounter-status-card h3 { margin: 4px 0 8px; text-align: center; }
 /* 战斗屏（Task 28） */

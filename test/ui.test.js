@@ -177,19 +177,69 @@ check("场景卡用 createElement 造按钮（测试桩能点）、未解锁灰�
 check("场景卡有名字、属性图标、野生起始等级、解锁条件",
   encUiJs.includes("sceneName") && encUiJs.includes("typeIconHtml") &&
   encUiJs.includes("encounterBaseLevel") && encUiJs.includes("encounterUnlock"));
-check("选队格子每张卡一个格子、显示 Lv/HP/攻击/亲密度",
-  encUiJs.includes('"team-cell"') && encUiJs.includes("affectionLevel") &&
-  encUiJs.includes("encounterAffection"));
+check("选队格子每种一个格子、格子上不显示数值（数值在悬停 tab 里选）",
+  encUiJs.includes('"team-cell"') && encUiJs.includes("每种一个格子") &&
+  !encUiJs.includes('"team-stat"') && !encUiJs.includes('"team-affection"') &&
+  encUiJs.includes("encounterAffectionPoints")); // tab 里仍显示亲密度（直接写点数）
+check("点格子只打开 tab、不直接选",
+  encUiJs.includes("点格子 = 打开 tab") && !encUiJs.includes("toggleSpecies"));
 check("选队最多 6 张、超了弹提示",
-  encUiJs.includes("picks.length >= 6") && encUiJs.includes("encounterTeamFull"));
+  encUiJs.includes("slot < 0") && encUiJs.includes("encounterTeamFull"));
 check("开始按钮没选队时禁用、开始后记进 ctx.encounter",
-  encUiJs.includes("teamPicks().length < 1") && encUiJs.includes("ctx.encounter = res.encounter"));
+  encUiJs.includes("pickCount() < 1") && encUiJs.includes("ctx.encounter = res.encounter"));
 check("开始后记进 ctx.encounter、进行中显示战斗屏",
   encUiJs.includes("ctx.encounter = res.encounter") && encUiJs.includes("renderBattle"));
 check("场景卡与选队格子有样式（选中红框、未解锁变暗）",
   css.includes(".scene-card") && css.includes(".scene-card.selected") && css.includes(".scene-card.locked") &&
   css.includes(".team-cell.selected"));
 
+// 选队改版：同种只放一只、悬停选哪一只上场、6 个精灵球
+check("选队标题下面有 6 个精灵球槽、悬停选卡 tab 容器",
+  html.includes('id="team-balls"') && html.includes('id="team-grid-wrap"') && html.includes('id="team-pick-tab"'));
+check("选队格子左上角属性标、右上角×几（已选的打勾）",
+  encUiJs.includes('"team-types"') && encUiJs.includes('"team-count"') && encUiJs.includes("typeIconHtml") &&
+  css.includes(".team-count") && css.includes(".team-cell .team-types"));
+check("精灵球开合样式（空球关着、选了打开、宝可梦放进去）",
+  css.includes(".team-balls") && css.includes(".team-ball") && css.includes(".team-ball.open .ball-top") &&
+  css.includes(".team-ball .ball-mon") && css.includes(".team-ball.open .ball-mon"));
+check("精灵球是摆件造型（球盖掀到宝可梦身后上方、宝可梦站在球上）",
+  css.includes("rotate(-28deg)") && css.includes(".team-ball.open .ball-top") &&
+  css.includes("bottom: 30px"));
+check("出征按钮在精灵球下面、底部的开始按钮也改叫出征",
+  html.includes('id="encounter-deploy-btn"') && html.includes('id="team-balls"') &&
+  html.indexOf('id="team-balls"') < html.indexOf('id="encounter-deploy-btn"') &&
+  fs.readFileSync(__dirname + "/../i18n.js", "utf8").includes('encounterStartBtn: "出征"'));
+check("两个出征按钮都接同一个开始动作、没选队时都禁用",
+  encUiJs.includes('encounter-deploy-btn') && encUiJs.includes('encounter-start-btn') &&
+  encUiJs.includes('$("encounter-deploy-btn").addEventListener("click", startRun)') &&
+  encUiJs.includes('$("encounter-deploy-btn").disabled = dis'));
+check("悬停选卡 tab 样式",
+  css.includes(".team-pick-tab") && css.includes(".team-pick-opt") && css.includes(".team-pick-opt.selected"));
+check("同种可以选多张：tab 里点具体哪张",
+  encUiJs.includes("togglePick") && !encUiJs.includes("toggleSpecies") &&
+  !encUiJs.includes("encounterSpeciesAllPicked"));
+check("点 tab 选项不收 tab、可以连续选",
+  encUiJs.includes("不收 tab") && !encUiJs.includes("togglePick(speciesId, idx); hidePickTab()"));
+check("球是固定槽：点哪只取消哪只、新卡放第一个空球",
+  encUiJs.includes("第一个空球") && encUiJs.includes("picks[i] = null") && encUiJs.includes("picks[slot]"));
+check("出征时空球不进战斗队伍",
+  encUiJs.includes("filter(function (p) { return !!p; })"));
+check("选卡 tab 改小（窄一点、字体小一点）",
+  css.includes("width: 190px") && /\.team-pick-title\s*\{[^}]*font-size:\s*12px/.test(css) &&
+  /\.team-pick-opt\s*\{[^}]*font-size:\s*12px/.test(css) && encUiJs.includes("tabW = 190"));
+check("格子底色按主属性染成卡片色（选了也不盖掉底色）",
+  encUiJs.includes('"tbg-"') && css.includes(".team-cell { position: relative; background: var(--tb, #fff);") &&
+  css.includes(".team-cell.selected { border-color: #e3350d; }"));
+check("tab 里亲密度直接写点数（亲密度:0）",
+  encUiJs.includes("encounterAffectionPoints") &&
+  fs.readFileSync(__dirname + "/../i18n.js", "utf8").includes('encounterAffectionPoints: "亲密度:{n}"'));
+check("悬停格子右边浮出该种的全部卡",
+  encUiJs.includes("showPickTab") && encUiJs.includes("mouseenter") && encUiJs.includes("encounterPickTitle"));
+check("点球取消选择",
+  encUiJs.includes("renderTeamBalls") && encUiJs.includes('"team-ball"') && encUiJs.includes("encounterTeamBallRemove"));
+check("选卡 tab 的文案有中英文",
+  fs.readFileSync(__dirname + "/../i18n.js", "utf8").includes("encounterPickTitle") &&
+  fs.readFileSync(__dirname + "/../i18n.js", "utf8").includes("encounterTeamBallRemove"));
 // Task 28：战斗界面 + 战间选择 + 结算
 check("战斗屏有野生/我方面板（立绘、名字、HP 条）与一行战报",
   html.includes('id="battle-screen"') && html.includes('id="battle-wild-img"') && html.includes('id="battle-wild-name"') &&
@@ -225,6 +275,17 @@ check("详情页队员卡显示实时当前 HP / 最大 HP",
 check("战斗样式齐全（HP 条、红绿、操作按钮、子菜单）",
   css.includes(".hp-bar") && css.includes(".hp-fill") && css.includes(".hp-fill.low") &&
   css.includes(".battle-actions") && css.includes(".battle-menu") && css.includes(".battle-log"));
+
+// Task 29：遭遇战结晶每日上限 100
+const encJs = fs.readFileSync(__dirname + "/../js/encounter.js", "utf8");
+check("每日上限 100 写在遭遇战状态机里、按本地日期记",
+  encJs.includes("DAILY_CRYSTAL_CAP = 100") && encJs.includes("encounterDayKey") &&
+  encJs.includes("encounterCrystalsToday"));
+check("宝箱按剩余额度发结晶、超了标 capped、道具不受影响",
+  encJs.includes("Math.min(wanted") && encJs.includes("capped: granted < wanted"));
+check("结算屏有上限提示行（被封顶时才显示）",
+  html.includes('id="battle-settle-cap"') && encUiJs.includes("battleSettleCapped") &&
+  encUiJs.includes('chest.capped ? "" : "none"'));
 
 console.log(failures === 0 ? "\n全部通过 ✅" : "\n失败 " + failures + " 项 ❌");
 process.exit(failures === 0 ? 0 : 1);

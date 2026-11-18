@@ -190,6 +190,43 @@ check("宝箱：越级 2 时不出道具（哪怕 rng 是 0）",
 check("宝箱：高等级抓到也算越级（不给基础结晶，只 +1）",
   (function () { const c = chestState(0, 1); return Encounter.settleChest(c.e, c.s, () => 0.99).crystals === 1; })());
 
+// Task 29：每日结晶上限 100
+const DAY1 = new Date(2026, 10, 17, 12);
+const DAY2 = new Date(2026, 10, 18, 12);
+check("每日上限：同一天内不同时间是同一天、隔天不同",
+  Encounter.encounterDayKey(new Date(2026, 10, 17, 0, 1)) === Encounter.encounterDayKey(new Date(2026, 10, 17, 23, 59)) &&
+  Encounter.encounterDayKey(DAY1) !== Encounter.encounterDayKey(DAY2));
+let d1 = chestState(3, 2); // 应得 5
+const chD1 = Encounter.settleChest(d1.e, d1.s, () => 0.9, DAY1);
+check("每日上限：首场 5 结晶全拿、记到今天",
+  chD1.crystals === 5 && chD1.capped === false &&
+  Gacha.ensureTrainer(d1.s).encounterCrystalsToday === 5 &&
+  Gacha.ensureTrainer(d1.s).encounterCrystalsDay === "2026-11-17");
+let d2 = chestState(3, 2);
+Gacha.ensureTrainer(d2.s).encounterCrystalsDay = "2026-11-17";
+Gacha.ensureTrainer(d2.s).encounterCrystalsToday = 98;
+const chD2 = Encounter.settleChest(d2.e, d2.s, () => 0.9, DAY1);
+check("每日上限：今天已有 98、应得 5 只发 2、capped 为真",
+  chD2.crystals === 2 && chD2.capped === true &&
+  Gacha.ensureTrainer(d2.s).encounterCrystalsToday === 100 &&
+  Gacha.ensureTrainer(d2.s).crystals === 2);
+let d3 = chestState(0, 3); // 应得 3，越级 3 可 roll 道具
+Gacha.ensureTrainer(d3.s).encounterCrystalsDay = "2026-11-17";
+Gacha.ensureTrainer(d3.s).encounterCrystalsToday = 100;
+let rngD3 = (function () { var seq = [0.1, 0.5]; return function () { return seq.shift(); }; })();
+const chD3 = Encounter.settleChest(d3.e, d3.s, rngD3, DAY1);
+check("每日上限：今天已满 100、结晶发 0 但道具照常 roll",
+  chD3.crystals === 0 && chD3.capped === true && chD3.items.length === 1 &&
+  Gacha.ensureTrainer(d3.s).crystals === 0);
+let d4 = chestState(3, 2);
+Gacha.ensureTrainer(d4.s).encounterCrystalsDay = "2026-11-16";
+Gacha.ensureTrainer(d4.s).encounterCrystalsToday = 100;
+const chD4 = Encounter.settleChest(d4.e, d4.s, () => 0.9, DAY1);
+check("每日上限：跨天清零、昨天 100 不影响今天",
+  chD4.crystals === 5 && chD4.capped === false &&
+  Gacha.ensureTrainer(d4.s).encounterCrystalsDay === "2026-11-17" &&
+  Gacha.ensureTrainer(d4.s).encounterCrystalsToday === 5);
+
 // 14. 撤退：不挨打、按当前进度开宝箱
 const s9 = makeState();
 addCard(s9, 3, 50);

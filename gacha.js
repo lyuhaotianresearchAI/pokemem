@@ -281,7 +281,7 @@
   function newTrainer() {
     return { name: "", level: 1, exp: 0, crystals: 0, candy: 0,
       items: freshItems(), registered: false, welcomeCrystalsGranted: false,
-      avatar: DEFAULT_AVATAR_ID };
+      avatar: DEFAULT_AVATAR_ID, encounterCrystalsDay: null, encounterCrystalsToday: 0 };
   }
   // 老存档迁移：没有 trainer 就补一个未注册的；已有的缺字段补默认值、坏值夹回合法范围，
   // 已有的名字/等级/结晶/糖果/道具一律保留，不补发经验和结晶。
@@ -310,6 +310,10 @@
     if (t.level >= TRAINER_MAX_LEVEL) t.exp = 0;
     if (typeof t.crystals !== "number" || !isFinite(t.crystals) || t.crystals < 0) t.crystals = 0;
     else t.crystals = Math.floor(t.crystals);
+    // 遭遇战每日结晶计数（Task 29，上限 100/天）：坏值修成 0，日期不是字符串修成 null
+    if (typeof t.encounterCrystalsToday !== "number" || !isFinite(t.encounterCrystalsToday) || t.encounterCrystalsToday < 0) t.encounterCrystalsToday = 0;
+    else t.encounterCrystalsToday = Math.floor(t.encounterCrystalsToday);
+    if (typeof t.encounterCrystalsDay !== "string") t.encounterCrystalsDay = null;
     if (typeof t.candy !== "number" || !isFinite(t.candy) || t.candy < 0) t.candy = 0;
     else t.candy = Math.floor(t.candy);
     if (!t.items || typeof t.items !== "object" || Array.isArray(t.items)) t.items = freshItems();

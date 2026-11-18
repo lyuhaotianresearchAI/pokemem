@@ -215,6 +215,15 @@ check("非法头像值 → 回默认赤红", badAvatar.trainer.avatar === "red")
 const goodAvatar = Gacha.newState(0); goodAvatar.trainer.avatar = "blue";
 Gacha.ensureTrainer(goodAvatar);
 check("合法头像值保留", goodAvatar.trainer.avatar === "blue");
+// Task 29：遭遇战每日结晶计数（上限 100/天）
+const freshTr = Gacha.newState(0);
+check("新训练师每日结晶计数默认 0、日期为空",
+  freshTr.trainer.encounterCrystalsToday === 0 && freshTr.trainer.encounterCrystalsDay === null);
+const badCap = Gacha.newState(0);
+badCap.trainer.encounterCrystalsToday = -5; badCap.trainer.encounterCrystalsDay = 123;
+Gacha.ensureTrainer(badCap);
+check("每日结晶计数的坏值修成 0 / null",
+  badCap.trainer.encounterCrystalsToday === 0 && badCap.trainer.encounterCrystalsDay === null);
 const swap = Gacha.newState(0);
 check("换头像合法 → true 且生效", Gacha.setAvatar(swap, "moon") === true && swap.trainer.avatar === "moon");
 check("换头像非法 → false 且不动", Gacha.setAvatar(swap, "pikachu") === false && swap.trainer.avatar === "moon");

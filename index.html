@@ -142,9 +142,11 @@
       <h3 data-i18n="encounterScenesTitle">选择场景</h3>
       <div id="scene-list" class="scene-list"></div>
       <h3 data-i18n="encounterTeamTitle">选择队伍</h3>
+      <div id="team-balls" class="team-balls"></div>
+      <button id="encounter-deploy-btn" class="big-btn" data-i18n="encounterStartBtn">出征</button>
       <p class="hint" id="team-pick-count"></p>
-      <div id="team-grid" class="dex-grid"></div>
-      <button id="encounter-start-btn" class="big-btn" data-i18n="encounterStartBtn">开始遭遇战</button>
+      <div class="team-grid-wrap" id="team-grid-wrap"><div id="team-grid" class="dex-grid"></div><div id="team-pick-tab" class="team-pick-tab" style="display:none"></div></div>
+      <button id="encounter-start-btn" class="big-btn" data-i18n="encounterStartBtn">出征</button>
     </div>
     <div id="encounter-status" style="display:none">
       <!-- 战斗屏 -->
@@ -182,6 +184,7 @@
           <h3 data-i18n="battleSettleTitle">遭遇战结束</h3>
           <p class="hint" id="battle-settle-kos"></p>
           <p class="hint" id="battle-settle-chest"></p>
+          <p class="hint" id="battle-settle-cap" style="display:none"></p>
           <button id="battle-settle-back-btn" class="big-btn" data-i18n="battleSettleBack">返回</button>
         </div>
       </div>
