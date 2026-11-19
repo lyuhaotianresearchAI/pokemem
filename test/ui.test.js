@@ -171,26 +171,53 @@ check("遭遇战 UI 文件在 encounter 逻辑之后加载",
 check("切到遭遇战页签时渲染",
   fs.readFileSync(__dirname + "/../js/tabs.js", "utf8").includes('tab === "encounter"') &&
   fs.readFileSync(__dirname + "/../js/tabs.js", "utf8").includes("renderEncounter"));
-check("场景卡用 createElement 造按钮（测试桩能点）、未解锁灰掉点不动",
-  encUiJs.includes('document.createElement("button")') && encUiJs.includes('"scene-card"') &&
+check("场景圆圈用 createElement 造按钮（测试桩能点）、未解锁灰掉点不动",
+  encUiJs.includes('document.createElement("button")') && encUiJs.includes('"orbit-cell"') &&
   encUiJs.includes('"locked"') && encUiJs.includes("if (locked) return;"));
 check("场景卡有名字、属性图标、野生起始等级、解锁条件",
   encUiJs.includes("sceneName") && encUiJs.includes("typeIconHtml") &&
   encUiJs.includes("encounterBaseLevel") && encUiJs.includes("encounterUnlock"));
+check("场景是轨道：9 个小圆圈绕中心转，中心显示悬停或选中场景的信息",
+  encUiJs.includes('"orbit-wrap"') && encUiJs.includes('"orbit-ring"') &&
+  encUiJs.includes('"orbit-cell"') && encUiJs.includes('"orbit-center"') &&
+  encUiJs.includes('"orbit-icon"') && // 图标反向转那层（和环同速反向，图标始终正着）
+  encUiJs.includes("SCENE_ICONS") && encUiJs.includes("imgUrl(sc.art)") && // 图标缺失时回落到代表宝可梦立绘
+  encUiJs.includes("orbitPaused") && encUiJs.includes("showOrbitCenter") &&
+  css.includes(".orbit-wrap") && css.includes(".orbit-ring") &&
+  css.includes("@keyframes orbit-spin") && css.includes(".orbit-wrap.paused .orbit-ring") &&
+  css.includes(".orbit-center") && css.includes(".orbit-types .type-chip") && css.includes(".orbit-cell.selected"));
+check("地形图文件在场景逻辑之后、遭遇战 UI 之前加载",
+  html.indexOf("js/scenes.js") < html.indexOf("js/scene-icons.js") &&
+  html.indexOf("js/scene-icons.js") < html.indexOf("js/encounter-ui.js"));
+check("会动的图：场景轨道转圈、图标反向转（始终正着）、地形图轻浮、悬停摇摆、选中脉冲、云朵飘、球里宝可梦轻浮",
+  css.includes("@keyframes orbit-spin") && css.includes("@keyframes orbit-spin-rev") &&
+  css.includes(".orbit-icon") && css.includes(".orbit-wrap.paused .orbit-icon") &&
+  css.includes("@keyframes scene-bob") && css.includes("@keyframes scene-wiggle") &&
+  css.includes("@keyframes scene-pulse") && css.includes("@keyframes ball-bob") &&
+  css.includes("@keyframes cloud-drift") && css.includes(".orbit-cell:hover .orbit-img") &&
+  css.includes(".orbit-cell.selected") && css.includes(".encounter-clouds") &&
+  html.includes('class="encounter-clouds"') && css.includes("prefers-reduced-motion"));
+check("选卡 tab 选项一行写全信息（小字 11px、不换行、短标签“攻”）",
+  encUiJs.includes("atkShort") && css.includes(".team-pick-opt") &&
+  css.includes("white-space: nowrap") && css.includes("font-size: 11px"));
+check("选卡 tab 悬停意图延迟 + 收起宽限（路过边上的格子不换 tab、移进 tab 取消待收）",
+  encUiJs.includes("PICK_TAB_OPEN_DELAY") && encUiJs.includes("PICK_TAB_CLOSE_DELAY") &&
+  encUiJs.includes("requestPickTab") && encUiJs.includes("scheduleHidePickTab") &&
+  encUiJs.includes("clearPickTabTimers"));
 check("选队格子每种一个格子、格子上不显示数值（数值在悬停 tab 里选）",
   encUiJs.includes('"team-cell"') && encUiJs.includes("每种一个格子") &&
   !encUiJs.includes('"team-stat"') && !encUiJs.includes('"team-affection"') &&
   encUiJs.includes("encounterAffectionPoints")); // tab 里仍显示亲密度（直接写点数）
 check("点格子只打开 tab、不直接选",
-  encUiJs.includes("点格子 = 打开 tab") && !encUiJs.includes("toggleSpecies"));
+  encUiJs.includes("点格子 = 立刻打开 tab") && !encUiJs.includes("toggleSpecies"));
 check("选队最多 6 张、超了弹提示",
   encUiJs.includes("slot < 0") && encUiJs.includes("encounterTeamFull"));
 check("开始按钮没选队时禁用、开始后记进 ctx.encounter",
   encUiJs.includes("pickCount() < 1") && encUiJs.includes("ctx.encounter = res.encounter"));
 check("开始后记进 ctx.encounter、进行中显示战斗屏",
   encUiJs.includes("ctx.encounter = res.encounter") && encUiJs.includes("renderBattle"));
-check("场景卡与选队格子有样式（选中红框、未解锁变暗）",
-  css.includes(".scene-card") && css.includes(".scene-card.selected") && css.includes(".scene-card.locked") &&
+check("场景轨道圆圈与选队格子有样式（选中红框、未解锁变暗）",
+  css.includes(".orbit-cell") && css.includes(".orbit-cell.selected") && css.includes(".orbit-cell.locked") &&
   css.includes(".team-cell.selected"));
 
 // 选队改版：同种只放一只、悬停选哪一只上场、6 个精灵球
@@ -224,9 +251,9 @@ check("球是固定槽：点哪只取消哪只、新卡放第一个空球",
   encUiJs.includes("第一个空球") && encUiJs.includes("picks[i] = null") && encUiJs.includes("picks[slot]"));
 check("出征时空球不进战斗队伍",
   encUiJs.includes("filter(function (p) { return !!p; })"));
-check("选卡 tab 改小（窄一点、字体小一点）",
-  css.includes("width: 190px") && /\.team-pick-title\s*\{[^}]*font-size:\s*12px/.test(css) &&
-  /\.team-pick-opt\s*\{[^}]*font-size:\s*12px/.test(css) && encUiJs.includes("tabW = 190"));
+check("选卡 tab 一行全信息：放宽到 230px、选项 11px 不换行（第四轮的 190px/12px 已让位给一行）",
+  css.includes("width: 230px") && /\.team-pick-title\s*\{[^}]*font-size:\s*12px/.test(css) &&
+  /\.team-pick-opt\s*\{[^}]*font-size:\s*11px/.test(css) && encUiJs.includes("tabW = 230"));
 check("格子底色按主属性染成卡片色（选了也不盖掉底色）",
   encUiJs.includes('"tbg-"') && css.includes(".team-cell { position: relative; background: var(--tb, #fff);") &&
   css.includes(".team-cell.selected { border-color: #e3350d; }"));

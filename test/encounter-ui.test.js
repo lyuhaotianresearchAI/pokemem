@@ -3,6 +3,10 @@
 // 点格子只打开选卡 tab（不直接选）、tab 里点选项不收 tab（可以连续选）、
 // 球是 6 个固定槽（点哪只取消哪只、别的球不动，新卡放第一个空球）、
 // 出征按钮（精灵球下面一个、最下面一个）、满 6 只拦第 7 只。
+// 悬停意图：快速路过边上的格子不换 tab（停满 200ms 才换）、收 tab 给 300ms 宽限；
+// tab 选项一行写全信息（小字、短标签）；场景是 9 个小圆圈绕中心转的轨道（全矢量 SVG 图，
+// 悬停/选中停转、离开/取消选中继续转，中心显示悬停或选中场景的信息）。
+// 桩用真定时器（setTimeout/clearTimeout），mouseenter/收 tab 的检查要 await 睡 260/360ms。
 const fs = require("fs");
 const vm = require("vm");
 
@@ -53,8 +57,9 @@ function makeEl(tag) {
 const els = {};
 const sandbox = {
   console: console,
-  setInterval: () => 0,
-  setTimeout: () => 0,
+  setInterval: () => 0, // boot.js 的 1 秒 tick：桩里不跑，免得进程退不出去
+  setTimeout: setTimeout, // 真的定时器：选卡 tab 的悬停意图延迟（200ms）和收起宽限（300ms）要靠它
+  clearTimeout: clearTimeout,
   addEventListener: () => {},
   localStorage: { _d: {}, getItem(k) { return this._d[k] || null; }, setItem(k, v) { this._d[k] = String(v); }, removeItem(k) { delete this._d[k]; } },
   document: {
@@ -90,7 +95,7 @@ function addCard(id, level) {
 addCard(7, 50); addCard(10, 30); addCard(13, 20); addCard(16, 40); addCard(25, 60);
 sandbox.localStorage.setItem("pokemem-save-v1", JSON.stringify(state));
 // 按 index.html 的加载顺序跑
-["js/store.js", "js/util.js", "js/lang.js", "js/types.js", "js/scenes.js", "js/encounter.js",
+["js/store.js", "js/util.js", "js/lang.js", "js/types.js", "js/scenes.js", "js/scene-icons.js", "js/encounter.js",
   "js/encounter-ui.js", "js/home.js", "js/dex.js", "js/rates.js", "js/tabs.js", "js/debug.js",
   "js/register.js", "js/trainer.js", "js/boot.js"].forEach(run);
 
@@ -117,8 +122,13 @@ const typesOf = function (id) {
 };
 const tabOpt = function (i) { return tab.children[i + 1]; }; // 选项按 Lv 从高到低排，children[0] 是标题
 const click = function (el) { el.listeners.click[0](); };
-const mouseenter = function (el) { el.listeners.mouseenter[0](); };
-const pickViaTab = function (id, optIdx) { mouseenter(cellOf(id)); click(tabOpt(optIdx)); };
+const sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+// 悬停开 tab 有 200ms 意图延迟：mouseenter 后要等 260ms tab 才换过来；
+// 点格子是立刻开，不用等（click 还是同步的）
+const mouseenter = async function (el) { el.listeners.mouseenter[0](); await sleep(260); };
+const pickViaTab = async function (id, optIdx) { await mouseenter(cellOf(id)); click(tabOpt(optIdx)); };
+
+(async function () {
 
 check("6 个球槽一开始都关着",
   ballsBox.children.length === 6 &&
@@ -137,6 +147,58 @@ check("一开始已选 0 / 6", els["team-pick-count"].textContent === "已选 0 
 check("一开始两个出征按钮都禁用",
   els["encounter-start-btn"].disabled === true && els["encounter-deploy-btn"].disabled === true);
 
+// 场景轨道：9 个小圆圈绕中心转（36s 一圈），中心显示悬停或选中场景的信息
+const orbitWrap = function () { return els["scene-list"].children[0]; };
+const orbitRing = function () { return orbitWrap().children[0]; };
+const orbitCenter = function () { return orbitWrap().children[1]; };
+const orbitCell = function (i) { return orbitRing().children[i]; };
+const orbitIcon = function (i) { return orbitCell(i).children[0]; }; // 反向转那层（图标 + 锁都在里面）
+const orbitImg = function (i) { return orbitIcon(i).children[0]; };
+const centerName = function () {
+  var ch = orbitCenter().children.filter(function (c) { return c.className === "orbit-name"; });
+  return ch.length ? ch[0].textContent : "";
+};
+const centerBase = function () {
+  var ch = orbitCenter().children.filter(function (c) { return c.className === "orbit-base"; });
+  return ch.length ? ch[0].textContent : "";
+};
+check("场景是轨道：1 个外框、环上 9 个圆圈、中间是信息区",
+  els["scene-list"].children.length === 1 && orbitRing().children.length === 9 &&
+  orbitWrap().className.indexOf("orbit-wrap") >= 0 && orbitCenter().className === "orbit-center");
+check("圆圈从正上方开始排（草丛在顶上、每 40° 一个）",
+  orbitCell(0).style.transform.indexOf("rotate(-90deg)") >= 0 &&
+  orbitCell(2).style.transform.indexOf("rotate(-10deg)") >= 0);
+check("9 个圆圈都是矢量 SVG 地形图（没有低分辨率 PNG），图标包在反向转那层里、始终正着",
+  orbitRing().children.every(function (cell) {
+    return cell.children[0].className === "orbit-icon" &&
+      cell.children[0].children[0].tagName === "IMG" &&
+      cell.children[0].children[0].src.indexOf("data:image/svg+xml;base64,") === 0;
+  }));
+check("中心默认显示已选的草丛（名字 + 打勾、属性图标、野生等级）",
+  centerName() === "草丛 ✓" &&
+  orbitCenter().children.some(function (c) { return c.className === "orbit-types"; }) &&
+  centerBase().indexOf("5") >= 0);
+orbitCell(1).dispatch("mouseenter");
+check("悬停森林圆圈，中心换成森林（未解锁显示解锁条件）",
+  centerName() === "森林" && centerBase().indexOf("5") >= 0);
+orbitCell(1).dispatch("mouseleave");
+check("鼠标离开圆圈，中心回到已选的草丛", centerName() === "草丛 ✓");
+check("未解锁的森林圆圈带锁、点不动（锁在反向转那层里，跟着图标一起正着）",
+  orbitCell(1).classList.contains("locked") &&
+  orbitIcon(1).children.some(function (c) { return c.className === "orbit-lock"; }));
+orbitCell(1).click();
+check("点未解锁场景不切换", orbitCell(0).classList.contains("selected") && !orbitCell(1).classList.contains("selected"));
+check("一开始没选、鼠标不在轨道上，转圈在转",
+  !orbitWrap().classList.contains("paused"));
+orbitCell(0).click(); // 点草丛：选中
+check("选中草丛，转圈停住", orbitWrap().classList.contains("paused"));
+orbitCell(0).click(); // 再点一次：取消选择
+check("再点一次取消选择，转圈继续转", !orbitWrap().classList.contains("paused"));
+orbitWrap().dispatch("mouseenter");
+check("鼠标放上轨道（没选），转圈也停住", orbitWrap().classList.contains("paused"));
+orbitWrap().dispatch("mouseleave");
+check("鼠标离开轨道（没选），转圈继续转", !orbitWrap().classList.contains("paused"));
+
 // 点 #001 格子：只打开 tab，不直接选
 click(cellOf(1));
 check("点格子只打开 tab、不直接选", tab.style.display === "block" && nPicked() === 0);
@@ -148,6 +210,10 @@ check("tab 列出该种 4 张卡、带数值",
   "实际 " + tab.children.length + " 个子元素");
 check("tab 里亲密度直接写点数（亲密度:0，不带 Lv.）",
   tab.children[1].textContent.indexOf("亲密度:0") >= 0 && tab.children[1].textContent.indexOf("亲密度 Lv.") < 0,
+  tab.children[1].textContent);
+check("tab 选项一行写全信息（Lv/HP/攻/亲密度，短标签“攻”不写“攻击”）",
+  tab.children[1].textContent.indexOf("攻") >= 0 && tab.children[1].textContent.indexOf("攻击") < 0 &&
+  /HP\d/.test(tab.children[1].textContent),
   tab.children[1].textContent);
 
 // tab 里连续选：点 Lv.96 → 1 号球开、tab 不关；再点 Lv.82 → 2 号球开、tab 还是不关
@@ -169,6 +235,28 @@ check("tab 里点已选的 Lv.96：取消、1 号球关回去，别的球不动"
   pickedIds());
 check("tab 里已选的那张打勾", tabOpt(1).classList.contains("selected") && !tabOpt(0).classList.contains("selected"));
 
+// 悬停意图：快速路过边上的格子不换 tab（去 tab 的路上经过小火龙也不换）；停满 200ms 才换
+cellOf(4).listeners.mouseenter[0](); // 路过：只触发，不等
+check("快速路过边上的格子：tab 还是 #001 的",
+  tab.children[0].textContent.indexOf("妙蛙种子") >= 0, tab.children[0].textContent);
+await sleep(260);
+check("在边上的格子停满 200ms：tab 才换成 #004",
+  tab.children[0].textContent.indexOf("小火龙") >= 0, tab.children[0].textContent);
+await mouseenter(cellOf(1)); // 回到 #001（mouseenter 自带 260ms 等待）
+check("回到 #001 的格子停满：tab 换回来",
+  tab.children[0].textContent.indexOf("妙蛙种子") >= 0, tab.children[0].textContent);
+
+// 收 tab 宽限：离开格子后 300ms 内还开着（够把鼠标移到 tab 上）；移进 tab 取消待收
+cellOf(1).dispatch("mouseleave", { target: cellOf(1), relatedTarget: null });
+check("离开格子：300ms 宽限内 tab 还开着", tab.style.display === "block");
+tab.dispatch("mouseenter"); // 移进 tab 里：取消待收
+await sleep(360);
+check("移进 tab 取消了待收：宽限过了 tab 还开着", tab.style.display === "block");
+cellOf(1).dispatch("mouseleave", { target: cellOf(1), relatedTarget: null });
+await sleep(360);
+check("离开格子又离开 tab：宽限过了才收起来", tab.style.display === "none");
+await mouseenter(cellOf(1)); // 重新打开 #001 的 tab，后面的流程继续
+
 // 新卡放第一个空球：1 号球空着，点 Lv.28 应该进 1 号球（不是最后）
 click(tabOpt(2));
 check("新卡放第一个空球（Lv.28 进 1 号球）",
@@ -189,20 +277,22 @@ click(tabOpt(1));
 check("再点 Lv.82：又回到 2 号球（第一个空球）",
   nPicked() === 4 && ballLv(ballAt(1)).textContent === "Lv.82", pickedIds());
 
-// 鼠标离开 tab 就收起来
+// 鼠标离开 tab：300ms 宽限内还开着，宽限过了才收起来
 tab.dispatch("mouseleave");
-check("鼠标离开 tab 就收起来", tab.style.display === "none");
+check("鼠标离开 tab：300ms 宽限内还开着", tab.style.display === "block");
+await sleep(360);
+check("鼠标离开 tab：宽限过了才收起来", tab.style.display === "none");
 
 // 清掉 4 只（球是固定槽：挨个点 1–4 号球）
 [0, 1, 2, 3].forEach(function (i) { click(ballAt(i)); });
 check("点球清掉四只", nPicked() === 0);
 
 // 选满 6 只：第 7 只被拦
-[[1, 0], [4, 0], [7, 0], [10, 0], [13, 0], [16, 0]].forEach(function (a) { pickViaTab(a[0], a[1]); });
+for (const a of [[1, 0], [4, 0], [7, 0], [10, 0], [13, 0], [16, 0]]) await pickViaTab(a[0], a[1]);
 check("选满 6 只", nPicked() === 6, "实际 " + nPicked());
 check("6 个球都打开", ballsBox.children.every(function (b) { return b.classList.contains("open"); }));
 check("已选 6 / 6", els["team-pick-count"].textContent === "已选 6 / 6");
-mouseenter(cellOf(1));
+await mouseenter(cellOf(1));
 click(tabOpt(1));
 check("满员时再点没选上的：弹提示、不再加",
   nPicked() === 6 && els["toast"].textContent.indexOf("最多选 6 张卡") >= 0, els["toast"].textContent);
@@ -216,3 +306,4 @@ check("出征后切到战斗屏",
 
 console.log(failures === 0 ? "\n全部通过 ✅" : "\n失败 " + failures + " 项 ❌");
 process.exit(failures === 0 ? 0 : 1);
+})();

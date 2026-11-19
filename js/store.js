@@ -34,7 +34,7 @@
     detailSort: { key: "level", dir: "desc" }, // 排序状态在不同宝可梦之间保留
     detailSelected: null, // 详情页左边 tab 当前选中的那张卡（对象引用，换宝可梦时自动重置）
     encounter: null, // 正在进行的遭遇战（内存里，不进存档；刷新页面就没了）
-    encounterScene: "grassland", // 遭遇战选中的场景
+    encounterScene: null, // 遭遇战选中的场景（null = 没选，默认草丛；selectedScene() 会回落到草丛）
     teamPicks: [] // 遭遇战选队：[{speciesId, cardIndex}]，最多 6 张
   };
   PokeMem.save = function () {

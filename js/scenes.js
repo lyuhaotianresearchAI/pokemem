@@ -15,16 +15,18 @@
 
   // 场景表（用户定 2026-11-17；草丛基础等级原定 3，但全表 minLv 最小就是 5，
   // 基础 3 在第 1–2 场刷不出任何宝可梦，所以改成 5）
+  // art：场景卡上的代表宝可梦（官方立绘，PokeAPI 同款图床）；卡面按场景渐变底色 + 这张立绘，
+  // 悬停浮层再显示场景名和会出现哪些属性（用户定 2026-11-17）
   var SCENES = [
-    { id: "grassland", zh: "草丛", en: "Grassland", unlockLevel: 1, baseLevel: 5, types: ["grass", "bug", "normal"] },
-    { id: "forest", zh: "森林", en: "Forest", unlockLevel: 5, baseLevel: 8, types: ["grass", "bug", "poison", "flying"] },
-    { id: "stream", zh: "溪流", en: "Stream", unlockLevel: 10, baseLevel: 12, types: ["water", "bug"] },
-    { id: "city", zh: "城市", en: "City", unlockLevel: 15, baseLevel: 16, types: ["normal", "electric", "poison"] },
-    { id: "desert", zh: "沙漠", en: "Desert", unlockLevel: 20, baseLevel: 22, types: ["ground", "rock", "fire"] },
-    { id: "cave", zh: "洞穴", en: "Cave", unlockLevel: 30, baseLevel: 30, types: ["rock", "ground", "poison", "ghost", "flying"] },
-    { id: "ocean", zh: "海洋", en: "Ocean", unlockLevel: 40, baseLevel: 38, types: ["water", "ice"] },
-    { id: "glacier", zh: "冰川", en: "Glacier", unlockLevel: 50, baseLevel: 48, types: ["ice", "water"] },
-    { id: "champions-road", zh: "冠军之路", en: "Champion's Road", unlockLevel: 70, baseLevel: 60, types: ["dragon", "psychic", "fighting", "ghost", "rock"] },
+    { id: "grassland", zh: "草丛", en: "Grassland", unlockLevel: 1, baseLevel: 5, types: ["grass", "bug", "normal"], art: 1 },
+    { id: "forest", zh: "森林", en: "Forest", unlockLevel: 5, baseLevel: 8, types: ["grass", "bug", "poison", "flying"], art: 12 },
+    { id: "stream", zh: "溪流", en: "Stream", unlockLevel: 10, baseLevel: 12, types: ["water", "bug"], art: 54 },
+    { id: "city", zh: "城市", en: "City", unlockLevel: 15, baseLevel: 16, types: ["normal", "electric", "poison"], art: 25 },
+    { id: "desert", zh: "沙漠", en: "Desert", unlockLevel: 20, baseLevel: 22, types: ["ground", "rock", "fire"], art: 27 },
+    { id: "cave", zh: "洞穴", en: "Cave", unlockLevel: 30, baseLevel: 30, types: ["rock", "ground", "poison", "ghost", "flying"], art: 74 },
+    { id: "ocean", zh: "海洋", en: "Ocean", unlockLevel: 40, baseLevel: 38, types: ["water", "ice"], art: 7 },
+    { id: "glacier", zh: "冰川", en: "Glacier", unlockLevel: 50, baseLevel: 48, types: ["ice", "water"], art: 144 },
+    { id: "champions-road", zh: "冠军之路", en: "Champion's Road", unlockLevel: 70, baseLevel: 60, types: ["dragon", "psychic", "fighting", "ghost", "rock"], art: 149 },
   ];
 
   // 出场稀有度分档（胜场数 = 本场已击倒 / 抓到的只数，和深度同一个计数器；用户定 2026-11-17）

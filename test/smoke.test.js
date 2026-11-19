@@ -10,7 +10,7 @@ const path = require("path");
 const GachaNode = require("../gacha.js"); // 仅用于造旧存档夹具
 
 const FILES = ["pokedex.js", "avatars.js", "i18n.js", "card-progress.js", "gacha.js", "js/store.js", "js/util.js",
-  "js/lang.js", "js/types.js", "js/scenes.js", "js/encounter.js", "js/encounter-ui.js", "js/home.js", "js/dex.js", "js/rates.js", "js/tabs.js",
+  "js/lang.js", "js/types.js", "js/scenes.js", "js/scene-icons.js", "js/encounter.js", "js/encounter-ui.js", "js/home.js", "js/dex.js", "js/rates.js", "js/tabs.js",
   "js/debug.js", "js/register.js", "js/trainer.js", "js/boot.js"];
 
 let failures = 0;
@@ -316,13 +316,13 @@ check("A 切回卡册页", A.doc._bySelector[".tab-page"][1].classList.contains(
 // 遭遇战页：场景列表 + 选队 + 开始 + 放弃
 byAttr(A.doc._bySelector["[data-tab]"], "data-tab", "encounter").click();
 check("A 切遭遇战页", A.doc._bySelector[".tab-page"][4].classList.contains("active"));
-check("A 场景列表 9 张", $A("scene-list").children.length === 9, "实际 " + $A("scene-list").children.length);
-var sceneBtns = $A("scene-list").children;
+check("A 场景是轨道（外框里 9 个圆圈绕中心转）", $A("scene-list").children.length === 1, "实际 " + $A("scene-list").children.length);
+var sceneBtns = $A("scene-list").children[0].children[0].children; // 轨道环上的 9 个圆圈
 check("A 草丛已解锁、森林未解锁（训练家不到 5 级）",
   !sceneBtns[0].classList.contains("locked") && sceneBtns[1].classList.contains("locked"));
 check("A 默认选中草丛", sceneBtns[0].classList.contains("selected"));
 sceneBtns[1].click();
-check("A 点未解锁场景不切换", sceneBtns[0].classList.contains("selected") && ctxA.encounterScene === "grassland");
+check("A 点未解锁场景不切换", sceneBtns[0].classList.contains("selected") && !ctxA.encounterScene);
 var teamSpecies = Object.keys(ctxA.state.collection).length;
 check("A 选队格子 = 卡册里的种数（每种一个格子）", $A("team-grid").children.length === teamSpecies,
   "实际 " + $A("team-grid").children.length + " / " + teamSpecies);

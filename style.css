@@ -168,16 +168,66 @@ button { font-family: inherit; }
 .trainer-item img { width: 28px; height: 28px; flex-shrink: 0; }
 .trainer-item-name { flex: 1; }
 .trainer-item.zero { opacity: .45; }
-/* 遭遇战页：场景卡、选队格子（Task 27） */
-.scene-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0; }
-.scene-card { background: #fff; border: 2px solid transparent; border-radius: 14px; padding: 10px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,.08); text-align: center; }
-.scene-card.selected { border-color: #e3350d; background: #fff0ec; }
-.scene-card.locked { opacity: .45; cursor: not-allowed; }
-.scene-name { font-size: 15px; font-weight: bold; color: #333; }
-.scene-types { display: flex; justify-content: center; gap: 4px; margin: 6px 0; }
-.scene-types .type-chip img { width: 22px; height: 22px; }
-.scene-base { font-size: 12px; color: #666; }
-.scene-lock { font-size: 12px; color: #e3350d; margin-top: 4px; }
+/* 会动的图（2026-11-17）：场景轨道转圈、地形图轻浮、悬停摇摆、选中脉冲、云朵飘、球里宝可梦轻浮 */
+@keyframes orbit-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+/* 图标反向转：环转 +36s 一圈、图标转 -36s 一圈，正负抵消，图标转圈时始终正着（底朝下） */
+@keyframes orbit-spin-rev { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+@keyframes scene-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+@keyframes scene-wiggle { 0%, 100% { transform: rotate(0deg); } 25% { transform: rotate(-4deg); } 75% { transform: rotate(4deg); } }
+@keyframes scene-pulse { 0%, 100% { box-shadow: 0 4px 12px rgba(0,0,0,.08); } 50% { box-shadow: 0 4px 20px rgba(227,53,13,.45); } }
+@keyframes ball-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes cloud-drift { from { left: -70px; } to { left: 105%; } }
+.orbit-cell .orbit-img { animation: scene-bob 3s ease-in-out infinite; }
+.orbit-cell:nth-child(3n+2) .orbit-img { animation-delay: -.9s; }
+.orbit-cell:nth-child(3n) .orbit-img { animation-delay: -1.7s; }
+.orbit-cell:hover .orbit-img { animation: scene-wiggle .5s ease-in-out; }
+.orbit-cell.selected { animation: scene-pulse 1.6s ease-in-out infinite; }
+.team-ball.open .ball-mon { animation: ball-bob 2.4s ease-in-out infinite; }
+.encounter-clouds { position: relative; height: 34px; overflow: hidden; margin: 2px 0 4px; pointer-events: none; }
+.encounter-clouds .cloud { position: absolute; top: 8px; width: 56px; height: 18px; background: #fff; border-radius: 20px; opacity: .85; animation: cloud-drift 52s linear infinite; }
+.encounter-clouds .cloud::before { content: ""; position: absolute; left: 10px; top: -10px; width: 22px; height: 22px; background: #fff; border-radius: 50%; }
+.encounter-clouds .cloud::after { content: ""; position: absolute; left: 26px; top: -6px; width: 16px; height: 16px; background: #fff; border-radius: 50%; }
+.encounter-clouds .c1 { animation-duration: 52s; animation-delay: -12s; top: 4px; }
+.encounter-clouds .c2 { animation-duration: 68s; animation-delay: -40s; top: 16px; transform: scale(.7); }
+.encounter-clouds .c3 { animation-duration: 44s; animation-delay: -26s; top: 10px; transform: scale(1.25); opacity: .6; }
+@media (prefers-reduced-motion: reduce) {
+  .orbit-ring, .orbit-icon, .orbit-cell .orbit-img, .orbit-cell.selected, .team-ball.open .ball-mon, .encounter-clouds .cloud { animation: none; }
+}
+/* 遭遇战页：场景轨道、选队格子（Task 27；场景改轨道转圈 2026-11-17） */
+.scene-list { margin: 10px 0; }
+/* 场景轨道：9 个小圆圈绕着中心转（36s 一圈）；鼠标放上轨道或选中了就停，离开且没选就继续转 */
+.orbit-wrap { position: relative; width: 340px; height: 340px; margin: 6px auto 2px; --orbit-r: 132px; --orbit-cell: 58px; }
+.orbit-ring { position: absolute; inset: 0; animation: orbit-spin 36s linear infinite; }
+.orbit-wrap.paused .orbit-ring { animation-play-state: paused; }
+.orbit-wrap.paused .orbit-icon { animation-play-state: paused; } /* 停转圈时反向转也要一起停，不然图标会原地打转 */
+.orbit-cell { position: absolute; left: 50%; top: 50%; width: var(--orbit-cell); height: var(--orbit-cell); margin: calc(var(--orbit-cell) / -2) 0 0 calc(var(--orbit-cell) / -2); border-radius: 50%; border: 3px solid #fff; box-shadow: 0 3px 8px rgba(0,0,0,.18); padding: 0; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.orbit-icon { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; animation: orbit-spin-rev 36s linear infinite; }
+.orbit-cell.selected { border-color: #e3350d; }
+.orbit-cell.locked { filter: grayscale(.7); opacity: .75; cursor: not-allowed; }
+.orbit-cell .orbit-img { width: 80%; height: 80%; object-fit: contain; filter: drop-shadow(0 4px 5px rgba(0,0,0,.25)); }
+.orbit-cell[data-scene="grassland"] { background: linear-gradient(160deg, #cdeeb4, #79b657 55%, #4e8f3a); }
+.orbit-cell[data-scene="forest"] { background: linear-gradient(160deg, #a8d8a0, #3f7d44 55%, #245c2e); }
+.orbit-cell[data-scene="stream"] { background: linear-gradient(160deg, #bfe6f5, #5aa9d6 55%, #2f7fb8); }
+.orbit-cell[data-scene="city"] { background: linear-gradient(160deg, #ffd9a0, #e89b5f 55%, #b45a30); }
+.orbit-cell[data-scene="desert"] { background: linear-gradient(160deg, #ffe9b0, #e8b96a 55%, #c08a3e); }
+.orbit-cell[data-scene="cave"] { background: linear-gradient(160deg, #b9a8cc, #6b5a8a 55%, #3d2f56); }
+.orbit-cell[data-scene="ocean"] { background: linear-gradient(160deg, #a8d8f0, #3f7fc9 55%, #1e4f8f); }
+.orbit-cell[data-scene="glacier"] { background: linear-gradient(160deg, #eef7ff, #a8d4ee 55%, #6fa8d8); }
+.orbit-cell[data-scene="champions-road"] { background: linear-gradient(160deg, #ffe9a8, #d4a437 55%, #7a4a9e); }
+.orbit-lock { position: absolute; right: -3px; bottom: -3px; font-size: 13px; line-height: 1; filter: drop-shadow(0 1px 2px rgba(0,0,0,.4)); }
+/* 轨道中心：显示悬停或选中场景的名字、属性、野生起始等级/解锁条件 */
+.orbit-center { position: absolute; left: 50%; top: 50%; width: 160px; height: 160px; margin: -80px 0 0 -80px; border-radius: 50%; background: rgba(255,255,255,.94); box-shadow: 0 3px 10px rgba(0,0,0,.14); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center; padding: 8px; pointer-events: none; }
+.orbit-name { font-size: 16px; font-weight: bold; color: #333; }
+.orbit-types { display: flex; justify-content: center; gap: 3px; }
+.orbit-types .type-chip { background: transparent; border: none; padding: 0; } /* typeIconHtml 复用详情页 .type-chip，带 8px 右内边距，5 个标会撑到 167px 超出圆圈；这里清掉，只留 20px 图标 */
+.orbit-types .type-chip img { width: 20px; height: 20px; }
+.orbit-base { font-size: 11px; color: #8a6d3b; }
+.orbit-hint { font-size: 12px; color: #999; line-height: 1.5; }
+@media (max-width: 480px) {
+  .orbit-wrap { width: 300px; height: 300px; --orbit-r: 114px; --orbit-cell: 50px; }
+  .orbit-center { width: 136px; height: 136px; margin: -68px 0 0 -68px; }
+  .orbit-name { font-size: 14px; }
+}
 .team-cell { position: relative; background: var(--tb, #fff); border: 2px solid transparent; border-radius: 14px; padding: 6px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,.08); text-align: center; }
 .team-cell.selected { border-color: #e3350d; }
 .team-cell img { width: 100%; aspect-ratio: 1; object-fit: contain; display: block; }
@@ -206,9 +256,9 @@ button { font-family: inherit; }
 .team-ball .ball-lv { position: absolute; left: 0; right: 0; bottom: 0; font-size: 11px; color: #666; text-align: center; }
 /* 悬停选卡 tab：格子右边浮出，列出该种的全部卡 */
 .team-grid-wrap { position: relative; }
-.team-pick-tab { position: absolute; width: 190px; background: #fff; border-radius: 14px; box-shadow: 0 8px 24px rgba(0,0,0,.18); padding: 8px; z-index: 30; }
+.team-pick-tab { position: absolute; width: 230px; background: #fff; border-radius: 14px; box-shadow: 0 8px 24px rgba(0,0,0,.18); padding: 8px; z-index: 30; }
 .team-pick-title { font-size: 12px; font-weight: bold; color: #333; margin-bottom: 6px; }
-.team-pick-opt { display: block; width: 100%; text-align: left; padding: 6px 8px; margin-top: 4px; border: 1px solid #f0c9c0; background: #fff; border-radius: 10px; font-size: 12px; cursor: pointer; }
+.team-pick-opt { display: block; width: 100%; text-align: left; padding: 6px 8px; margin-top: 4px; border: 1px solid #f0c9c0; background: #fff; border-radius: 10px; font-size: 11px; white-space: nowrap; cursor: pointer; }
 .team-pick-opt:hover { background: #fff0ec; }
 .team-pick-opt.selected { border-color: #e3350d; background: #fff0ec; font-weight: bold; }
 @media (max-width: 480px) {

@@ -271,46 +271,124 @@
     ctx.encounter = null;
     renderEncounter();
   }
-  // 场景卡：名字 + 属性图标 + 野生起始等级；未解锁的灰掉、点不动
+  // 场景轨道：9 个小圆圈绕着中心转（36s 一圈，图标始终正着）；中心显示悬停或选中场景的信息
+  // （名字、属性、野生起始等级、解锁条件），没悬停也没选中时显示提示。
+  // 转圈的停/转：鼠标放上轨道就停（好点中）；选中了也停（再点一次已选的取消选择）；
+  // 没选、鼠标也离开了就继续转。点选只就地改 .selected，不重建轨道（重建会把转圈角度归零）。
+  var orbitHover = false; // 鼠标在不在轨道上
+  var orbitWrapEl = null; // 轨道外框（转圈暂停靠它加 .paused）
+  var orbitCenterEl = null; // 中心信息区
+  var orbitCells = []; // 9 个圆圈（按场景顺序）
+  function orbitPaused() { return orbitHover || !!ctx.encounterScene; }
+  function updateOrbitPause() {
+    if (!orbitWrapEl) return;
+    if (orbitPaused()) orbitWrapEl.classList.add("paused");
+    else orbitWrapEl.classList.remove("paused");
+  }
+  // 中心显示哪个场景的信息：悬停的优先，其次已选的（默认草丛），都没有就显示提示
+  function showOrbitCenter(sc) {
+    if (!orbitCenterEl) return;
+    orbitCenterEl.innerHTML = "";
+    if (!sc) {
+      var hint = document.createElement("div");
+      hint.className = "orbit-hint";
+      hint.textContent = t("encounterOrbitHint");
+      orbitCenterEl.appendChild(hint);
+      return;
+    }
+    var locked = Gacha.ensureTrainer(ctx.state).level < sc.unlockLevel;
+    var name = document.createElement("div");
+    name.className = "orbit-name";
+    name.textContent = PokeMem.Scenes.sceneName(sc.id, PokeMem.lang()) +
+      (sc.id === selectedScene() ? " ✓" : "");
+    orbitCenterEl.appendChild(name);
+    var types = document.createElement("div");
+    types.className = "orbit-types";
+    types.innerHTML = sc.types.map(function (id) { return PokeMem.Types.typeIconHtml(id); }).join("");
+    orbitCenterEl.appendChild(types);
+    var base = document.createElement("div");
+    base.className = "orbit-base";
+    base.textContent = locked
+      ? t("encounterUnlock", { level: sc.unlockLevel })
+      : t("encounterBaseLevel", { level: sc.baseLevel });
+    orbitCenterEl.appendChild(base);
+  }
   function renderScenes() {
     var tr = Gacha.ensureTrainer(ctx.state);
     var list = $("scene-list");
     list.innerHTML = "";
-    PokeMem.Scenes.SCENES.forEach(function (sc) {
+    orbitCells = [];
+    var wrap = document.createElement("div");
+    wrap.className = "orbit-wrap";
+    wrap.id = "orbit-wrap";
+    orbitWrapEl = wrap;
+    var ring = document.createElement("div");
+    ring.className = "orbit-ring";
+    wrap.appendChild(ring);
+    var center = document.createElement("div");
+    center.className = "orbit-center";
+    orbitCenterEl = center;
+    wrap.appendChild(center);
+    list.appendChild(wrap);
+    PokeMem.Scenes.SCENES.forEach(function (sc, i) {
       var locked = tr.level < sc.unlockLevel;
-      var b = document.createElement("button");
-      b.classList.add("scene-card");
-      if (locked) b.classList.add("locked");
-      if (sc.id === selectedScene()) b.classList.add("selected");
-      b.setAttribute("data-scene", sc.id);
-      var name = document.createElement("div");
-      name.className = "scene-name";
-      name.textContent = PokeMem.Scenes.sceneName(sc.id, PokeMem.lang());
-      b.appendChild(name);
-      var types = document.createElement("div");
-      types.className = "scene-types";
-      types.innerHTML = sc.types.map(function (id) { return PokeMem.Types.typeIconHtml(id); }).join("");
-      b.appendChild(types);
-      var base = document.createElement("div");
-      base.className = "scene-base";
-      base.textContent = t("encounterBaseLevel", { level: sc.baseLevel });
-      b.appendChild(base);
+      var cell = document.createElement("button");
+      cell.classList.add("orbit-cell");
+      if (locked) cell.classList.add("locked");
+      if (sc.id === selectedScene()) cell.classList.add("selected");
+      cell.setAttribute("data-scene", sc.id);
+      // 圆圈在环上的位置：9 个、每 40° 一个，从正上方开始顺时针；内层反向转回来，图标始终正着
+      var angle = i * 40 - 90;
+      cell.style.transform = "rotate(" + angle + "deg) translate(var(--orbit-r)) rotate(" + (-angle) + "deg)";
+      var img = document.createElement("img");
+      img.className = "orbit-img";
+      // 场景图：卡通地形图（SCENE_ICONS，全矢量 SVG）；文件没加载就回落到代表宝可梦立绘
+      img.src = (typeof SCENE_ICONS !== "undefined" && SCENE_ICONS[sc.id]) || imgUrl(sc.art);
+      img.alt = "";
+      img.onerror = function () { this.style.display = "none"; };
+      img.setAttribute("loading", "lazy");
+      // 图标包一层 .orbit-icon 反向转（和环同速反向），图标转圈时始终正着、底朝下；
+      // 锁也放这一层里，跟着图标一起正着，不会绕着圆圈跑
+      var icon = document.createElement("div");
+      icon.className = "orbit-icon";
+      icon.appendChild(img);
       if (locked) {
-        var lock = document.createElement("div");
-        lock.className = "scene-lock";
-        lock.textContent = t("encounterUnlock", { level: sc.unlockLevel });
-        b.appendChild(lock);
+        var badge = document.createElement("span");
+        badge.className = "orbit-lock";
+        badge.textContent = "🔒";
+        icon.appendChild(badge);
       }
-      b.addEventListener("click", function () {
-        if (locked) return;
-        ctx.encounterScene = sc.id;
-        renderScenes();
+      cell.appendChild(icon);
+      cell.addEventListener("mouseenter", function () { showOrbitCenter(sc); });
+      cell.addEventListener("mouseleave", function () {
+        showOrbitCenter(PokeMem.Scenes.sceneById(selectedScene()));
       });
-      list.appendChild(b);
+      cell.addEventListener("click", function () {
+        if (locked) return;
+        // 再点一次已选的 = 取消选择（转圈继续）；点别的 = 换选（转圈停住）
+        ctx.encounterScene = (ctx.encounterScene === sc.id) ? null : sc.id;
+        orbitCells.forEach(function (c) {
+          if (c.getAttribute("data-scene") === selectedScene()) c.classList.add("selected");
+          else c.classList.remove("selected");
+        });
+        showOrbitCenter(PokeMem.Scenes.sceneById(selectedScene()));
+        updateOrbitPause();
+      });
+      ring.appendChild(cell);
+      orbitCells.push(cell);
     });
+    wrap.addEventListener("mouseenter", function () { orbitHover = true; updateOrbitPause(); });
+    wrap.addEventListener("mouseleave", function () {
+      orbitHover = false;
+      showOrbitCenter(PokeMem.Scenes.sceneById(selectedScene()));
+      updateOrbitPause();
+    });
+    showOrbitCenter(PokeMem.Scenes.sceneById(selectedScene()));
+    updateOrbitPause();
   }
   // 选队格子：每种一个格子（只放形象和名字，Lv / HP / 攻击 / 亲密度不在格子上显示，在悬停 tab 里选）
   function renderTeam() {
+    clearPickTabTimers(); // 格子重绘、旧格子没了：之前悬停排队的开 tab 定时别再拿旧格子定位
     var grid = $("team-grid");
     grid.innerHTML = "";
     POKEDEX.forEach(function (row) {
@@ -345,12 +423,12 @@
       cnt.className = "team-count" + (picked ? " selected" : "");
       cnt.textContent = (picked ? "✓ " : "") + "×" + e.cards.length;
       b.appendChild(cnt);
-      b.addEventListener("click", function () { showPickTab(row[0], b); }); // 点格子 = 打开 tab（不直接选）
-      b.addEventListener("mouseenter", function () { showPickTab(row[0], b); });
+      b.addEventListener("click", function () { clearPickTabTimers(); showPickTab(row[0], b); }); // 点格子 = 立刻打开 tab（不直接选）
+      b.addEventListener("mouseenter", function () { requestPickTab(row[0], b); });
       b.addEventListener("mouseleave", function (ev) {
         var tab = $("team-pick-tab");
-        if (ev && ev.relatedTarget && tab.contains && tab.contains(ev.relatedTarget)) return; // 移进 tab 里别收
-        hidePickTab();
+        if (ev && ev.relatedTarget && tab.contains && tab.contains(ev.relatedTarget)) { clearPickTabTimers(); return; } // 移进 tab 里：取消待开/待收，别收
+        scheduleHidePickTab();
       });
       grid.appendChild(b);
     });
@@ -396,8 +474,31 @@
     }
     return b;
   }
+  // tab 难移入的修法（用户反馈 2026-11-17）：格子到 tab 的路上会经过边上的格子，
+  // 以前每个格子的 mouseenter 立刻换 tab，tab 就跟着鼠标跑、还没摸到就换了种甚至关了。
+  // 现在两件事：① 悬停要“停一下才算数”（200ms 意图延迟），快速路过边上的格子不换 tab；
+  // ② 收 tab 给 300ms 宽限，格子→tab 的路上哪怕短暂离开格子/tab 也不立刻收，
+  // 移进 tab 里就取消待收。点格子还是立刻开，不等。
+  var PICK_TAB_OPEN_DELAY = 200; // 悬停意图延迟：鼠标在一个格子上停满这么久才换 tab
+  var PICK_TAB_CLOSE_DELAY = 300; // 收 tab 宽限：离开格子/tab 后这么久才收，给移鼠标留时间
+  var pickTabShowTimer = null;
+  var pickTabHideTimer = null;
+  function clearPickTabTimers() {
+    if (pickTabShowTimer) { clearTimeout(pickTabShowTimer); pickTabShowTimer = null; }
+    if (pickTabHideTimer) { clearTimeout(pickTabHideTimer); pickTabHideTimer = null; }
+  }
+  function requestPickTab(speciesId, cell) {
+    if (openTabSpecies === speciesId && $("team-pick-tab").style.display !== "none") { clearPickTabTimers(); return; } // 已经是这个种：只取消待收，不重绘
+    clearPickTabTimers();
+    pickTabShowTimer = setTimeout(function () { pickTabShowTimer = null; showPickTab(speciesId, cell); }, PICK_TAB_OPEN_DELAY);
+  }
+  function scheduleHidePickTab() {
+    clearPickTabTimers();
+    pickTabHideTimer = setTimeout(function () { pickTabHideTimer = null; hidePickTab(); }, PICK_TAB_CLOSE_DELAY);
+  }
   // 悬停选卡 tab：鼠标移到格子上（或点格子），右边浮出该种宝可梦的全部卡，点一只上场
   function showPickTab(speciesId, cell) {
+    clearPickTabTimers();
     openTabSpecies = speciesId;
     var tab = $("team-pick-tab");
     tab.innerHTML = "";
@@ -415,13 +516,14 @@
       b.classList.add("team-pick-opt");
       if (sel) b.classList.add("selected");
       b.setAttribute("data-card", idx);
-      b.textContent = "Lv." + c.level + "　HP " + c.hp + " · " + t("atkLabel") + " " + c.atk +
-        "　" + t("encounterAffectionPoints", { n: c.affection || 0 }) + (sel ? "　✓" : "");
+      // 每张卡一行写全信息（Lv / HP / 攻 / 亲密度 + 已选勾），字小、不换行
+      b.textContent = "Lv." + c.level + " · HP" + c.hp + " · " + t("atkShort") + c.atk +
+        " · " + t("encounterAffectionPoints", { n: c.affection || 0 }) + (sel ? " ✓" : "");
       b.addEventListener("click", function () { togglePick(speciesId, idx); }); // 点选项只切换、不收 tab，可以连续选
       tab.appendChild(b);
     });
     // 定位：格子右边；靠右边缘时改放左边
-    var tabW = 190;
+    var tabW = 230;
     var left = (cell.offsetLeft || 0) + (cell.offsetWidth || 0) + 8;
     var wrap = $("team-grid-wrap");
     if (wrap && left + tabW > (wrap.offsetWidth || 0)) left = Math.max(0, (cell.offsetLeft || 0) - tabW - 8);
@@ -429,7 +531,7 @@
     tab.style.top = (cell.offsetTop || 0) + "px";
     tab.style.display = "block";
   }
-  function hidePickTab() { openTabSpecies = null; $("team-pick-tab").style.display = "none"; }
+  function hidePickTab() { clearPickTabTimers(); openTabSpecies = null; $("team-pick-tab").style.display = "none"; }
   function togglePick(speciesId, cardIndex) {
     var picks = teamPicks();
     var i = pickIndex(speciesId, cardIndex);
@@ -473,5 +575,6 @@
   $("battle-continue-btn").addEventListener("click", doContinue);
   $("battle-end-btn").addEventListener("click", doEnd);
   $("battle-settle-back-btn").addEventListener("click", backToPicker);
-  $("team-pick-tab").addEventListener("mouseleave", hidePickTab);
+  $("team-pick-tab").addEventListener("mouseenter", clearPickTabTimers); // 移进 tab 里：取消待收
+  $("team-pick-tab").addEventListener("mouseleave", scheduleHidePickTab);
 })();
