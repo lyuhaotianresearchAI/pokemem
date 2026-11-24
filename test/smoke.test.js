@@ -314,6 +314,9 @@ byAttr(A.doc._bySelector["[data-tab]"], "data-tab", "dex").click();
 check("A 切回卡册页", A.doc._bySelector[".tab-page"][1].classList.contains("active"));
 
 // 遭遇战页：场景列表 + 选队 + 开始 + 放弃
+// Task 32 起继续前进是 70/30 roll：这里把 Math.random 定死 0.5，让两次继续都走战斗
+// （事件屏在 Task 33，届时这里要补事件流的覆盖）
+vm.runInContext("Math.random = function () { return 0.5; };", A.context);
 byAttr(A.doc._bySelector["[data-tab]"], "data-tab", "encounter").click();
 check("A 切遭遇战页", A.doc._bySelector[".tab-page"][4].classList.contains("active"));
 check("A 场景是轨道（外框里 9 个圆圈绕中心转）", $A("scene-list").children.length === 1, "实际 " + $A("scene-list").children.length);

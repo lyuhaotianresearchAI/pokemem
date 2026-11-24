@@ -1,4 +1,4 @@
-// PokeMem — 遭遇战状态机（Task 26，Task 29 加每日结晶上限）
+// PokeMem — 遭遇战状态机（Task 26，Task 29 加每日结晶上限，Task 32 接事件）
 // 纯逻辑，可在浏览器和 Node 里共用；不碰 DOM、不直接读写存档。
 // 状态放在调用方（浏览器里是 PokeMem.ctx.encounter），函数拿 (enc, state, rng) 操作它；
 // 调用方负责在每次行动后保存存档（PokeMem.save()），因为每轮结算的经验 / 亲密度 /
@@ -6,6 +6,8 @@
 // 每日结晶上限（Task 29，用户定 2026-11-17：100/天）：宝箱发结晶时封顶，计数记在
 // 训练师数据里（encounterCrystalsDay / encounterCrystalsToday，本地日期 key，跨天清零）；
 // 道具 roll 不受结晶上限影响。settleChest / retreat / endRun 可传 now（Date 或时间戳，测试用）。
+// 到上限改亲密度（Task 31，用户定 2026-11-23）：宝箱被封顶的部分改给出战卡亲密度 +2，
+// 事件结晶被封顶改 +1，胜场战利品被封顶改 +1（都在发结晶的地方转）；满 10 级无效。
 // 战报（enc.log，Task 28 的战斗界面按这个渲染；带名字的条目同时记 nameEn / attackerEn / defenderEn，英文模式用英文名）：
 //   {t:"spawn", id, name, nameEn, level, tier}      刷出下一只野生
 //   {t:"hit", by:"player"|"wild", attacker, attackerEn, defender, defenderEn, damage, crit, mult, defHp, defHpMax}
@@ -15,12 +17,15 @@
 //   {t:"switch", name, nameEn}                      交换 / 免费选下一只
 //   {t:"levelup", name, nameEn, from, to}           出战卡结算升了级
 //   {t:"prompt"}                            进战间选择（继续前进 / 结束遭遇战）
-//   {t:"chest", crystals, items, capped}      宝箱结算（capped = 被每日上限封顶）
+//   {t:"event", name, nameEn, textZh, textEn}  触发一个事件（Task 32；界面在 Task 33 渲染）
+//   {t:"bonus", bonus}                      战斗类事件的胜场战利品已发（Task 32）
+//   {t:"chest", crystals, items, capped, affection}  宝箱结算（capped = 被每日上限封顶）
 //   {t:"wipe"}                              6 只全倒下（团灭）
 //   {t:"retreat"}                           撤退
 // 依赖：图鉴 POKEDEX（pokedex.js）、属性模块 Types（js/types.js）、
 // 场景模块 Scenes（js/scenes.js）、抽卡核心 Gacha（gacha.js）、
-// 卡片成长 CardProgress（card-progress.js）。加载顺序见 index.html。
+// 卡片成长 CardProgress（card-progress.js）、事件模块 EncounterEvents（js/encounter-events.js）。
+// 加载顺序见 index.html。
 (function (root) {
   "use strict";
   var POKEDEX = root.POKEDEX || (typeof require !== "undefined" ? require("../pokedex.js").POKEDEX : []);
@@ -28,11 +33,13 @@
   var Scenes = (root.PokeMem && root.PokeMem.Scenes) || (typeof require !== "undefined" ? require("./scenes.js") : null);
   var Gacha = root.Gacha || (typeof require !== "undefined" ? require("../gacha.js") : null);
   var CardProgress = root.CardProgress || (typeof require !== "undefined" ? require("../card-progress.js") : null);
+  var EncounterEvents = (root.PokeMem && root.PokeMem.EncounterEvents) || (typeof require !== "undefined" ? require("./encounter-events.js") : null);
   if (!POKEDEX.length) throw new Error("PokeMem: 图鉴数据未加载，请确认 pokedex.js 在 js/encounter.js 之前引入");
   if (!Types) throw new Error("PokeMem: 属性模块未加载，请确认 js/types.js 在 js/encounter.js 之前引入");
   if (!Scenes) throw new Error("PokeMem: 场景模块未加载，请确认 js/scenes.js 在 js/encounter.js 之前引入");
   if (!Gacha) throw new Error("PokeMem: 抽卡核心未加载，请确认 gacha.js 在 js/encounter.js 之前引入");
   if (!CardProgress) throw new Error("PokeMem: 卡片成长模块未加载，请确认 card-progress.js 在 js/encounter.js 之前引入");
+  if (!EncounterEvents) throw new Error("PokeMem: 事件模块未加载，请确认 js/encounter-events.js 在 js/encounter.js 之前引入");
 
   // 伤害 = max(1, round(攻击 × 克制倍率 / 3))，暴击时再 ×2；/ 3 是调参旋钮
   var DAMAGE_DIVISOR = 3;
@@ -107,8 +114,37 @@
     return { ok: true, team: team };
   }
   function spawnNextWild(enc, rng) {
-    enc.wild = Scenes.spawnWild(enc.sceneId, enc.wins, teamMaxLevel(enc), rng);
+    var opts = {};
+    // minTierNext：下一只野生稀有度至少某档，刷野时消耗（用完清零）
+    if (enc.mods && enc.mods.minTierNext) { opts.minTier = enc.mods.minTierNext; enc.mods.minTierNext = null; }
+    enc.wild = Scenes.spawnWild(enc.sceneId, enc.wins, teamMaxLevel(enc), rng, opts);
     if (!enc.wild) return null;
+    applyWildLevelBonus(enc);
+    log(enc, { t: "spawn", id: enc.wild.id, name: enc.wild.name, nameEn: enc.wild.en, level: enc.wild.level, tier: enc.wild.tier });
+    return enc.wild;
+  }
+  // 迷路事件的「本场剩余野生等级 +N」：同种野生重造一级，等级更高（不改种类和稀有度档）
+  function applyWildLevelBonus(enc) {
+    var bonus = enc.mods && enc.mods.wildLevelBonus;
+    if (bonus > 0 && enc.wild) {
+      var row = POKEDEX[enc.wild.id - 1];
+      if (row) enc.wild = Scenes.makeWild(row, Math.min(100, enc.wild.level + bonus));
+    }
+  }
+  // 战斗类事件的刷野：类型过滤（钓鱼只要水系）、稀有度上限（蛋只要 N）、等级加成
+  // （训练师挑战 +2 之类）都走这里；等级加成和迷路加成一样重造（同种、等级更高）
+  function spawnEventWild(enc, rng, battle) {
+    var opts = {};
+    if (battle.typeFilter) opts.typeFilter = battle.typeFilter;
+    if (battle.tierCap) opts.maxTier = battle.tierCap;
+    if (enc.mods && enc.mods.minTierNext) { opts.minTier = enc.mods.minTierNext; enc.mods.minTierNext = null; }
+    enc.wild = Scenes.spawnWild(enc.sceneId, enc.wins, teamMaxLevel(enc), rng, opts);
+    if (!enc.wild) return null;
+    var bonus = (battle.levelBonus || 0) + ((enc.mods && enc.mods.wildLevelBonus) || 0);
+    if (bonus > 0) {
+      var row = POKEDEX[enc.wild.id - 1];
+      if (row) enc.wild = Scenes.makeWild(row, Math.min(100, enc.wild.level + bonus));
+    }
     log(enc, { t: "spawn", id: enc.wild.id, name: enc.wild.name, nameEn: enc.wild.en, level: enc.wild.level, tier: enc.wild.tier });
     return enc.wild;
   }
@@ -122,7 +158,13 @@
     if (!built.ok) return built;
     var enc = { sceneId: sceneId, team: built.team, activeIndex: 0, wild: null,
       wins: 0, kos: 0, highLevelWins: 0, catches: 0,
-      phase: "battle", needsPick: false, chest: null, log: [] };
+      phase: "battle", needsPick: false, chest: null, log: [],
+      // Task 32：当前事件（phase "event" 时是 applyEvent 的返回）、胜场战利品、擂台剩余场次、
+      // 运行期修正值（和 js/encounter-events.js 的 ensureMods 同形；常驻的整场有效，
+      // 「下一场」的在每场战斗结束时清掉）
+      event: null, pendingBonus: null, arenaRemaining: 0,
+      mods: { atkBonus: 0, critBonus: 0, damageMultNext: 1, catchMultNext: 1,
+        forceFirstNext: false, forceWildFirstNext: false, wildLevelBonus: 0, minTierNext: null, chestMult: 1 } };
     spawnNextWild(enc, rng);
     if (!enc.wild) return { ok: false, error: "noWild" };
     return { ok: true, encounter: enc };
@@ -140,11 +182,15 @@
     return isFainted(active);
   }
   // 玩家攻击野生；返回野生是否被击倒
+  // 修正值（Task 32）：攻击 +atkBonus、暴击率 +critBonus、伤害 ×damageMultNext（整场有效，打完清零）
   function playerAttack(enc, rng) {
     var active = activeMember(enc);
+    var mods = enc.mods || {};
     var mult = Types.effectiveness(firstTypeOf(active.types), Types.parseTypes(enc.wild.types));
-    var crit = rng() < CardProgress.critRateForCard(active.card) / 100;
-    var dmg = calcDamage(active.card.atk, mult, crit);
+    var critRate = CardProgress.critRateForCard(active.card) + (mods.critBonus || 0);
+    var crit = rng() < critRate / 100;
+    var dmg = calcDamage(active.card.atk + (mods.atkBonus || 0), mult, crit);
+    if (mods.damageMultNext && mods.damageMultNext !== 1) dmg = Math.max(1, Math.round(dmg * mods.damageMultNext));
     enc.wild.hp = Math.max(0, enc.wild.hp - dmg);
     log(enc, { t: "hit", by: "player", attacker: active.name, attackerEn: active.en, defender: enc.wild.name, defenderEn: enc.wild.en,
       damage: dmg, crit: crit, mult: mult, defHp: enc.wild.hp, defHpMax: enc.wild.hpMax });
@@ -166,7 +212,11 @@
   }
   // 每赢一轮（击倒或抓到）的结算：经验 + 亲密度都给出战的那张卡，立即写进卡里；
   // 然后进战间选择（继续前进 / 结束遭遇战），下一只野生在选继续时才刷。
-  function winRound(enc, state, how) {
+  // 擂台（arenaRemaining > 0）：不进战间选择、不发战利品，直接刷同一事件的下一场；
+  // 最后一场：发战斗类事件的胜场战利品（有的话），清掉「下一场」修正值，再进战间选择。
+  // 返回 { arena: true }（擂台继续）或 { bonus }（最后一场发的战利品，没有就是 null）。
+  function winRound(enc, state, how, rng, now) {
+    rng = rng || Math.random;
     var active = activeMember(enc);
     var wild = enc.wild;
     enc.wins += 1;
@@ -179,26 +229,95 @@
     CardProgress.normalizeCardProgress(active.card);
     active.card.affection = (active.card.affection || 0) + 1;
     if (levels > 0) log(enc, { t: "levelup", name: active.name, nameEn: active.en, from: active.card.level - levels, to: active.card.level });
+    if (enc.arenaRemaining > 0) {
+      enc.arenaRemaining -= 1;
+      enc.wild = null;
+      spawnEventWild(enc, rng, (enc.event && enc.event.battle) || {});
+      return { arena: true, bonus: null };
+    }
+    var bonus = null;
+    if (enc.pendingBonus) {
+      bonus = grantPendingBonus(enc, state, enc.pendingBonus, rng, now);
+      if (bonus) log(enc, { t: "bonus", bonus: bonus });
+      enc.pendingBonus = null;
+    }
+    enc.event = null;
+    clearBattleMods(enc);
     enc.wild = null;
     enc.phase = "prompt";
     log(enc, { t: "prompt" });
+    return { arena: false, bonus: bonus };
+  }
+  // 每场战斗结束清掉「下一场」修正值（伤害/捕捉/先手；稀有度下限在刷野时已消耗）；
+  // 本场常驻的（攻击/暴击/野生等级/结算倍率）不清
+  function clearBattleMods(enc) {
+    if (!enc.mods) return;
+    enc.mods.damageMultNext = 1;
+    enc.mods.catchMultNext = 1;
+    enc.mods.forceFirstNext = false;
+    enc.mods.forceWildFirstNext = false;
+  }
+  // 战斗类事件的胜场战利品：结晶走每日上限（到上限改亲密度 +1，满 10 级无效）；
+  // 球/糖果直接发；随机石头 roll 一个；亲密度直接加给出战卡
+  function grantPendingBonus(enc, state, bonus, rng, now) {
+    if (!bonus) return null;
+    rng = rng || Math.random;
+    var trainer = Gacha.ensureTrainer(state);
+    var active = activeMember(enc);
+    var granted = {};
+    if (typeof bonus.crystals === "number") {
+      var grant = Gacha.grantEncounterCrystals(state, bonus.crystals, now);
+      granted.crystals = grant.granted;
+      if (grant.capped && active) {
+        CardProgress.normalizeCardProgress(active.card);
+        if (CardProgress.affectionLevel(active.card.affection) < CardProgress.AFFECTION_MAX_LEVEL) {
+          active.card.affection = Math.min(CardProgress.AFFECTION_MAX_LEVEL * CardProgress.AFFECTION_POINTS_PER_LEVEL,
+            (active.card.affection || 0) + 1);
+          granted.affection = 1;
+        }
+      }
+    }
+    if (bonus.items) Object.keys(bonus.items).forEach(function (id) {
+      trainer.items[id] = (trainer.items[id] || 0) + bonus.items[id];
+      granted.items = granted.items || {};
+      granted.items[id] = (granted.items[id] || 0) + bonus.items[id];
+    });
+    if (typeof bonus.candy === "number") { trainer.candy += bonus.candy; granted.candy = bonus.candy; }
+    if (bonus.randomStone) {
+      var stones = EncounterEvents.STONES;
+      var stone = stones[Math.min(stones.length - 1, Math.floor(rng() * stones.length))];
+      trainer.items[stone] = (trainer.items[stone] || 0) + 1;
+      granted.items = granted.items || {};
+      granted.items[stone] = (granted.items[stone] || 0) + 1;
+    }
+    if (typeof bonus.affection === "number" && active) {
+      CardProgress.normalizeCardProgress(active.card);
+      active.card.affection = (active.card.affection || 0) + bonus.affection;
+      granted.affection = (granted.affection || 0) + bonus.affection;
+    }
+    return granted;
   }
 
   // 攻击：野生等级 > 出战等级时野生先攻；若出战卡被这一击打倒，本次攻击打不出来。
   // 野生每回合最多攻击一次（先攻就是它的那次攻击；玩家先攻时它是反击）。
-  function attack(enc, state, rng) {
+  // 先手修正值（Task 32）：forceWildFirstNext > forceFirstNext > 等级规则
+  // now 可传（Date 或时间戳，测试用），透传给 winRound（战利品发结晶要按天算上限）
+  function attack(enc, state, rng, now) {
     if (enc.phase !== "battle") return { ok: false, error: "notInBattle" };
     if (enc.needsPick) return { ok: false, error: "needPick" };
     var active = activeMember(enc);
     if (!active || isFainted(active)) return { ok: false, error: "noActive" };
     if (!enc.wild) return { ok: false, error: "noWild" };
-    var result = { ok: true, wildFainted: false, activeFainted: false, needsPick: false, wiped: false, prompt: false };
-    var wildFirst = enc.wild.level > active.card.level;
+    var result = { ok: true, wildFainted: false, activeFainted: false, needsPick: false, wiped: false, prompt: false, arena: false, bonus: null };
+    var mods = enc.mods || {};
+    var wildFirst = mods.forceWildFirstNext ? true : mods.forceFirstNext ? false : enc.wild.level > active.card.level;
     if (wildFirst && wildAttack(enc, rng)) { afterFaint(enc, state, rng, result); return result; }
     if (playerAttack(enc, rng)) {
       result.wildFainted = true;
-      result.prompt = true;
-      winRound(enc, state, "ko");
+      var wr = winRound(enc, state, "ko", rng, now);
+      if (wr.arena) result.arena = true;
+      else result.prompt = true;
+      result.bonus = wr.bonus;
       return result;
     }
     if (!wildFirst && wildAttack(enc, rng)) afterFaint(enc, state, rng, result);
@@ -232,16 +351,19 @@
   // 不加入本场队伍；超上限按抽卡老规则，最弱的出局换糖果）；失败则球消耗掉，野生反击。
   // 注意：抓到那张卡若是队伍里某张卡的同种、且那张卡正好是 6 张里等级最低的，
   // 队伍引用的对象会被移出卡册（引用本身还在，本场能继续打，但它的经验结算不再进存档）——极少见，接受。
-  function useBall(enc, state, rng, ballId) {
+  // now 可传（Date 或时间戳，测试用），透传给 winRound（战利品发结晶要按天算上限）
+  function useBall(enc, state, rng, ballId, now) {
     if (enc.phase !== "battle") return { ok: false, error: "notInBattle" };
     if (enc.needsPick) return { ok: false, error: "needPick" };
     if (BALL_MULT[ballId] == null) return { ok: false, error: "badBall" };
     var trainer = Gacha.ensureTrainer(state);
     if (!trainer.items || !(trainer.items[ballId] > 0)) return { ok: false, error: "noBall" };
-    var result = { ok: true, caught: false, activeFainted: false, needsPick: false, wiped: false, prompt: false };
+    var result = { ok: true, caught: false, activeFainted: false, needsPick: false, wiped: false, prompt: false, arena: false, bonus: null };
     trainer.items[ballId] -= 1;
     var wild = enc.wild;
-    var caught = rng() < catchRate(wild, ballId);
+    // 捕捉率 ×catchMultNext（幸运草之类），再夹回 [0.05, 0.9]
+    var catchMult = (enc.mods && enc.mods.catchMultNext) || 1;
+    var caught = rng() < Math.max(0.05, Math.min(0.9, catchRate(wild, ballId) * catchMult));
     log(enc, { t: "catch", name: wild.name, nameEn: wild.en, ball: ballId, success: caught });
     if (caught) {
       // 抓到的稀有宝可梦按正常公式算 HP（野生的 ×2 / ×3 / ×5 不带走），暴击率按这张卡的亲密度（新卡 0%）
@@ -249,8 +371,10 @@
         tier: wild.tier, prob: wild.prob, level: wild.level, hp: wild.baseHp, atk: wild.atk, exp: 0, affection: 0 });
       enc.catches += 1;
       result.caught = true;
-      result.prompt = true;
-      winRound(enc, state, "catch");
+      var wr = winRound(enc, state, "catch", rng, now);
+      if (wr.arena) result.arena = true;
+      else result.prompt = true;
+      result.bonus = wr.bonus;
       return result;
     }
     if (wildAttack(enc, rng)) afterFaint(enc, state, rng, result);
@@ -302,18 +426,51 @@
     log(enc, { t: "retreat" });
     return { ok: true, chest: settleChest(enc, state, rng, now) };
   }
-  // 战间选择：继续前进——刷出下一只更高级的野生（胜场数 = 深度已涨）
-  function continueRun(enc, state, rng) {
-    if (enc.phase !== "prompt") return { ok: false, error: "notInPrompt" };
+  // 战间推进：70% 野生战斗 / 30% 随机事件（用户定 2026-11-23）。
+  // 事件当场结算（applyEvent），进 event 阶段等界面展示；战斗类事件要等玩家点「开始战斗」
+  // （startEventBattle）才刷野。没有可选事件时回落到战斗。战斗类事件未打之前不能继续前进
+  // （得先打完或结束遭遇战）。
+  function nextStep(enc, state, rng, now) {
+    rng = rng || Math.random;
+    if (enc.phase !== "prompt" && enc.phase !== "event") return { ok: false, error: "notInPrompt" };
+    if (enc.phase === "event" && enc.event && enc.event.kind === "battle") return { ok: false, error: "eventBattlePending" };
     if (enc.needsPick) return { ok: false, error: "needPick" };
+    if (rng() < 0.30) {
+      var ev = EncounterEvents.rollEvent(enc, state, rng, now);
+      if (ev) {
+        var res = EncounterEvents.applyEvent(enc, state, ev, rng, now);
+        enc.event = res;
+        enc.phase = "event";
+        log(enc, { t: "event", name: res.event.zh, nameEn: res.event.en, textZh: res.textZh, textEn: res.textEn });
+        return { ok: true, phase: "event", event: res };
+      }
+    }
     spawnNextWild(enc, rng);
     if (!enc.wild) return { ok: false, error: "noWild" };
+    enc.event = null; // 上一个事件已结束（O4：不留过期引用）
     enc.phase = "battle";
-    return { ok: true, wild: enc.wild };
+    return { ok: true, phase: "battle", wild: enc.wild };
   }
-  // 战间选择：结束遭遇战——开宝箱结算
+  // 战斗类事件开打：按事件参数刷野（等级加成 / 类型过滤 / 稀有度上限），记下胜场战利品
+  // 和擂台剩余场次；擂台一共打 2 场（arenaRemaining 记第一场之后还剩几场）
+  function startEventBattle(enc, state, rng) {
+    rng = rng || Math.random;
+    if (enc.phase !== "event" || !enc.event || enc.event.kind !== "battle") return { ok: false, error: "notInEventBattle" };
+    var battle = enc.event.battle || {};
+    enc.pendingBonus = battle.bonus || null;
+    enc.arenaRemaining = battle.arena ? 1 : 0;
+    spawnEventWild(enc, rng, battle);
+    if (!enc.wild) return { ok: false, error: "noWild" };
+    enc.phase = "battle";
+    return { ok: true, phase: "battle", wild: enc.wild };
+  }
+  // 战间选择：继续前进——70% 战斗 / 30% 事件（nextStep）
+  function continueRun(enc, state, rng, now) {
+    return nextStep(enc, state, rng, now);
+  }
+  // 战间选择：结束遭遇战——开宝箱结算；事件屏上也可以结束
   function endRun(enc, state, rng, now) {
-    if (enc.phase !== "prompt") return { ok: false, error: "notInPrompt" };
+    if (enc.phase !== "prompt" && enc.phase !== "event") return { ok: false, error: "notInPrompt" };
     return { ok: true, chest: settleChest(enc, state, rng, now) };
   }
 
@@ -326,7 +483,8 @@
     isFainted: isFainted,
     usableMembers: usableMembers, teamMaxLevel: teamMaxLevel, attack: attack,
     switchMember: switchMember, chooseNext: chooseNext, useBall: useBall,
-    retreat: retreat, continueRun: continueRun, endRun: endRun,
+    retreat: retreat, continueRun: continueRun, endRun: endRun, nextStep: nextStep,
+    startEventBattle: startEventBattle,
     settleChest: settleChest, winRound: winRound, spawnNextWild: spawnNextWild };
 
   if (typeof window !== "undefined") {

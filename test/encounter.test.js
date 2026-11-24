@@ -284,7 +284,7 @@ addCard(s10, 6, 50);
 const e10 = Encounter.startEncounter(s10, "grassland", [{ speciesId: 6, cardIndex: 0 }], () => 0).encounter;
 Encounter.attack(e10, s10, noCrit); // KO，进 prompt
 check("战间：KO 后在 prompt 阶段", e10.phase === "prompt");
-const r10 = Encounter.continueRun(e10, s10, () => 0);
+const r10 = Encounter.continueRun(e10, s10, () => 0.5); // 0.5 ≥ 0.30 → 战斗（Task 32：继续前进是 70/30 roll）
 check("继续前进：刷出下一只 Lv 7（基础 5 + 2×1）、回战斗阶段",
   r10.ok && e10.wild.level === 7 && e10.phase === "battle");
 Encounter.attack(e10, s10, noCrit); // 再 KO 一只（Lv 7 绿毛虫，90 伤照样秒）
@@ -309,6 +309,179 @@ card11.hp = st51.hp + 10;
 Encounter.refreshTeamMaxHp(e11);
 check("糖果升级同步：refreshTeamMaxHp 后最大 HP 跟上、当前 HP 不变",
   e11.team[0].hpMax === st51.hp + 10 && e11.team[0].hp === 184);
+
+// 17. Task 32：事件接入——nextStep 70/30、战斗类事件、擂台、修正值、战利品
+function seq32(vals) { var i = 0; return function () { return vals[Math.min(i++, vals.length - 1)]; }; }
+// 打赢第一只进 prompt 阶段的遭遇战（wild.hp 先置 1，保证一击 KO）
+function promptEnc(sceneId, trainerLevel) {
+  const s = makeState();
+  addCard(s, 6, 50);
+  if (trainerLevel) Gacha.ensureTrainer(s).level = trainerLevel;
+  const e = Encounter.startEncounter(s, sceneId, [{ speciesId: 6, cardIndex: 0 }], () => 0).encounter;
+  e.wild.hp = 1;
+  Encounter.attack(e, s, noCrit);
+  return { s: s, e: e };
+}
+// 17a. nextStep：70% 战斗 / 30% 事件
+let n1 = promptEnc("grassland");
+const ns1 = Encounter.nextStep(n1.e, n1.s, () => 0.5);
+check("nextStep：rng 0.5 ≥ 0.30 → 战斗，下一只 Lv 7",
+  ns1.ok && ns1.phase === "battle" && n1.e.phase === "battle" && n1.e.wild.level === 7);
+let n2 = promptEnc("grassland");
+const ns2 = Encounter.nextStep(n2.e, n2.s, seq32([0.1, 0.5, 0]));
+check("nextStep：rng 0.1 < 0.30 → 事件，草丛第一个是路见不平（战斗类）",
+  ns2.ok && ns2.phase === "event" && n2.e.phase === "event" &&
+  n2.e.event.event.id === "help-stranger" && n2.e.event.kind === "battle");
+check("nextStep：战斗类事件未打之前不能继续前进",
+  Encounter.nextStep(n2.e, n2.s, () => 0.5).error === "eventBattlePending");
+check("nextStep：战斗阶段不能推进", Encounter.nextStep(n1.e, n1.s, () => 0.5).error === "notInPrompt");
+let n3 = promptEnc("city", 15);
+const ns3 = Encounter.nextStep(n3.e, n3.s, seq32([0.1, 0.5, 0.35]));
+check("nextStep：城市事件 roll 到好心人指导（增益），攻击 +5、进 event 阶段",
+  ns3.ok && ns3.phase === "event" && n3.e.event.event.id === "kind-mentor" &&
+  n3.e.mods.atkBonus === 5);
+const ns3b = Encounter.nextStep(n3.e, n3.s, () => 0.5);
+check("nextStep：非战斗事件屏上可以继续前进（再 roll 到战斗）",
+  ns3b.ok && ns3b.phase === "battle" && n3.e.phase === "battle");
+// 17b. 训练师挑战：开打、等级 +2、胜场战利品 2 结晶
+let d = promptEnc("city", 15);
+Encounter.nextStep(d.e, d.s, seq32([0.1, 0.5, 0.1]));
+check("训练师挑战：roll 到了", d.e.event.event.id === "trainer-duel");
+const ds = Encounter.startEventBattle(d.e, d.s, () => 0);
+check("训练师挑战：开打，野生 Lv 20（基础 18 + 2）、战利品记 2 结晶",
+  ds.ok && d.e.phase === "battle" && d.e.wild.level === 20 && d.e.pendingBonus.crystals === 2);
+d.e.wild.hp = 1;
+const dr = Encounter.attack(d.e, d.s, noCrit);
+check("训练师挑战：打赢进 prompt、战利品 2 结晶到账、事件清掉",
+  dr.prompt === true && dr.bonus && dr.bonus.crystals === 2 &&
+  Gacha.ensureTrainer(d.s).crystals === 2 && d.e.pendingBonus === null && d.e.event === null);
+check("startEventBattle：不在事件战斗屏上报错",
+  Encounter.startEventBattle(d.e, d.s, () => 0).error === "notInEventBattle");
+// 17c. 擂台：连打 2 场，最后一场才发 5 结晶
+let a = promptEnc("city", 15);
+Encounter.nextStep(a.e, a.s, seq32([0.1, 0.5, 0.18]));
+check("擂台：roll 到了", a.e.event.event.id === "arena");
+Encounter.startEventBattle(a.e, a.s, () => 0);
+check("擂台：第一场开打，还剩 1 场", a.e.arenaRemaining === 1);
+a.e.wild.hp = 1;
+const ar1 = Encounter.attack(a.e, a.s, noCrit);
+check("擂台：第一场打赢不进 prompt、直接刷第二场",
+  ar1.arena === true && ar1.prompt === false && a.e.phase === "battle" &&
+  a.e.arenaRemaining === 0 && !!a.e.wild);
+a.e.wild.hp = 1;
+const ar2 = Encounter.attack(a.e, a.s, noCrit);
+check("擂台：第二场打赢进 prompt、战利品 5 结晶到账",
+  ar2.prompt === true && ar2.bonus && ar2.bonus.crystals === 5 &&
+  Gacha.ensureTrainer(a.s).crystals === 5);
+// 17d. 修正值进战斗
+// 取玩家最近一次攻击的 log（promptEnc 的第一场也有 hit，find 会取到旧的）
+function lastHit(e) { for (var i = e.log.length - 1; i >= 0; i--) { var l = e.log[i]; if (l.t === "hit" && l.by === "player") return l; } return null; }
+// 攻击 +5：Lv 50 喷火龙打 Lv 5 野生，基准 90 伤（×2），+5 攻 → 93 伤
+let k1 = promptEnc("grassland");
+k1.e.mods.atkBonus = 5;
+Encounter.continueRun(k1.e, k1.s, () => 0.5);
+Encounter.attack(k1.e, k1.s, noCrit);
+const hit1 = lastHit(k1.e);
+check("攻击修正：攻击 +5 → 伤害 90 变 93", hit1 && hit1.damage === 93);
+// 暴击 +100%：必暴击，伤害翻倍
+let k2 = promptEnc("grassland");
+k2.e.mods.critBonus = 100;
+Encounter.continueRun(k2.e, k2.s, () => 0.5);
+Encounter.attack(k2.e, k2.s, function () { return 0.5; });
+const hitCrit = lastHit(k2.e);
+check("暴击修正：暴击率 +100% → 必暴击、伤害 180", hitCrit && hitCrit.crit === true && hitCrit.damage === 180);
+// 伤害 ×1.5：90 → 135，打完清零
+let k3 = promptEnc("grassland");
+k3.e.mods.damageMultNext = 1.5;
+Encounter.continueRun(k3.e, k3.s, () => 0.5);
+Encounter.attack(k3.e, k3.s, noCrit);
+const hit3 = lastHit(k3.e);
+check("伤害修正：下一场伤害 ×1.5 → 135，打完清零",
+  hit3 && hit3.damage === 135 && k3.e.mods.damageMultNext === 1);
+// 捕捉 ×2：满血 N 精灵球本来 5%，×2 后 10%，rng 0.07 能抓住；没修正抓不住
+function catchSetup(mult) {
+  const s = makeState();
+  addCard(s, 6, 50);
+  setBalls(s, { ultra_ball: 1 });
+  const e = Encounter.startEncounter(s, "grassland", [{ speciesId: 6, cardIndex: 0 }], () => 0).encounter;
+  e.mods.catchMultNext = mult;
+  return { s: s, e: e };
+}
+let cA = catchSetup(2);
+const crA = Encounter.useBall(cA.e, cA.s, function () { return 0.07; }, "ultra_ball");
+check("捕捉修正：捕捉率 ×2 后 0.07 能抓住满血野生", crA.caught === true);
+let cB = catchSetup(1);
+const crB = Encounter.useBall(cB.e, cB.s, function () { return 0.07; }, "ultra_ball");
+check("捕捉修正：没修正时 0.07 抓不住（5% 封底）", crB.caught === false);
+// 先手：野生 60 级快龙本来先攻，forceFirstNext 让玩家先攻；forceWildFirstNext 让野生先攻
+let f1 = makeState();
+addCard(f1, 6, 50);
+const ef1 = Encounter.startEncounter(f1, "grassland", [{ speciesId: 6, cardIndex: 0 }], () => 0).encounter;
+ef1.wild = Scenes.makeWild(POKEDEX[148], 60);
+ef1.mods.forceFirstNext = true;
+Encounter.attack(ef1, f1, noCrit);
+const firstHit1 = ef1.log.find(function (l) { return l.t === "hit"; });
+check("先手修正：forceFirstNext 时玩家先攻", firstHit1 && firstHit1.by === "player");
+let f2 = makeState();
+addCard(f2, 6, 50);
+const ef2 = Encounter.startEncounter(f2, "grassland", [{ speciesId: 6, cardIndex: 0 }], () => 0).encounter;
+ef2.mods.forceWildFirstNext = true;
+Encounter.attack(ef2, f2, noCrit);
+const firstHit2 = ef2.log.find(function (l) { return l.t === "hit"; });
+check("先手修正：forceWildFirstNext 时野生先攻（本来玩家先攻）",
+  firstHit2 && firstHit2.by === "wild");
+// 迷路：本场剩余野生等级 +3，下一只 7 → 10
+let w1 = promptEnc("grassland");
+w1.e.mods.wildLevelBonus = 3;
+Encounter.continueRun(w1.e, w1.s, () => 0.5);
+check("等级修正：wildLevelBonus +3 → 下一只 Lv 10", w1.e.wild.level === 10);
+// 稀有度下限：胜场 3 时下一只至少 SR，用完清零
+let t1 = promptEnc("grassland");
+t1.e.wins = 3;
+t1.e.mods.minTierNext = "SR";
+Encounter.continueRun(t1.e, t1.s, () => 0.5);
+check("稀有度下限：minTierNext SR → 下一只就是 SR、用完清零",
+  t1.e.wild.tier === "SR" && t1.e.mods.minTierNext === null);
+// 17e. 战利品结晶到上限改亲密度 +1
+let b1 = promptEnc("city", 15);
+const bt1 = Gacha.ensureTrainer(b1.s);
+bt1.encounterCrystalsDay = Gacha.encounterDayKey(new Date(2026, 10, 23));
+bt1.encounterCrystalsToday = 100;
+Encounter.nextStep(b1.e, b1.s, seq32([0.1, 0.5, 0.1]));
+Encounter.startEventBattle(b1.e, b1.s, () => 0);
+b1.e.wild.hp = 1;
+const br1 = Encounter.attack(b1.e, b1.s, noCrit, new Date(2026, 10, 23)); // 固定日期：战利品按 11-23 这天算上限
+check("战利品封顶：到上限时 2 结晶发 0、改亲密度 +1",
+  br1.bonus && br1.bonus.crystals === 0 && br1.bonus.affection === 1 &&
+  b1.e.team[0].card.affection === 3); // 第一场胜 +1，决斗胜 +1，转换 +1
+let b2 = promptEnc("city", 15);
+const bt2 = Gacha.ensureTrainer(b2.s);
+bt2.encounterCrystalsDay = Gacha.encounterDayKey(new Date(2026, 10, 23));
+bt2.encounterCrystalsToday = 100;
+b2.e.team[0].card.affection = 100;
+Encounter.nextStep(b2.e, b2.s, seq32([0.1, 0.5, 0.1]));
+Encounter.startEventBattle(b2.e, b2.s, () => 0);
+b2.e.wild.hp = 1;
+const br2 = Encounter.attack(b2.e, b2.s, noCrit, new Date(2026, 10, 23)); // 固定日期：战利品按 11-23 这天算上限
+check("战利品封顶：亲密度满 10 级、转换无效",
+  br2.bonus && br2.bonus.crystals === 0 && !br2.bonus.affection);
+// 17f. 事件屏上继续 / 结束
+let e1 = promptEnc("city", 15);
+Encounter.nextStep(e1.e, e1.s, seq32([0.1, 0.5, 0.35])); // 好心人指导，非战斗事件
+check("事件屏：非战斗事件上可以结束遭遇战",
+  Encounter.endRun(e1.e, e1.s, () => 0.9).ok && e1.e.phase === "done");
+check("结束：战斗阶段不能 endRun", Encounter.endRun(n1.e, n1.s, () => 0.9).error === "notInPrompt");
+// 17g. 钓鱼（只要水系）/ 蛋（只要 N）
+let g1 = promptEnc("stream", 10);
+g1.e.event = { kind: "battle", battle: { levelBonus: 0, typeFilter: "water" } };
+g1.e.phase = "event";
+const gr1 = Encounter.startEventBattle(g1.e, g1.s, () => 0);
+check("钓鱼：刷出的野生是水系", gr1.ok && g1.e.wild.types.indexOf("水") >= 0);
+let g2 = promptEnc("grassland");
+g2.e.event = { kind: "battle", battle: { levelBonus: 0, tierCap: "N" } };
+g2.e.phase = "event";
+const gr2 = Encounter.startEventBattle(g2.e, g2.s, () => 0);
+check("蛋：刷出的野生是 N", gr2.ok && g2.e.wild.tier === "N");
 
 console.log(failures === 0 ? "\n全部通过 ✅" : "\n失败 " + failures + " 项 ❌");
 process.exit(failures === 0 ? 0 : 1);
