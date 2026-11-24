@@ -228,6 +228,8 @@ check("事件屏视觉只叠 class、不改状态（applyKind / showMeteor / set
   encUiJs.includes("PokeMem.EventAnim.showMeteor"));
 check("事件屏视觉也尊重 reduced-motion",
   css.includes(".settle-meteor") && css.includes("prefers-reduced-motion"));
+check("增益光带是上浮不是下沉（buff-rise 从 -110% 到 110%，光带从卡底升到卡顶）",
+  css.includes("@keyframes buff-rise { from { background-position: 0 -110%; } to { background-position: 0 110%; } }"));
 check("会动的图：场景轨道转圈、图标反向转（始终正着）、地形图轻浮、悬停摇摆、选中脉冲、云朵飘、球里宝可梦轻浮",
   css.includes("@keyframes orbit-spin") && css.includes("@keyframes orbit-spin-rev") &&
   css.includes(".orbit-icon") && css.includes(".orbit-wrap.paused .orbit-icon") &&
