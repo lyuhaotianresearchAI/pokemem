@@ -96,7 +96,7 @@ addCard(7, 50); addCard(10, 30); addCard(13, 20); addCard(16, 40); addCard(25, 6
 sandbox.localStorage.setItem("pokemem-save-v1", JSON.stringify(state));
 // 按 index.html 的加载顺序跑
 ["js/store.js", "js/util.js", "js/lang.js", "js/types.js", "js/scenes.js", "js/scene-icons.js", "js/encounter-events.js", "js/encounter.js",
-  "js/battle-anim.js", "js/encounter-ui.js", "js/home.js", "js/dex.js", "js/rates.js", "js/tabs.js", "js/debug.js",
+  "js/battle-anim.js", "js/event-anim.js", "js/encounter-ui.js", "js/home.js", "js/dex.js", "js/rates.js", "js/tabs.js", "js/debug.js",
   "js/register.js", "js/trainer.js", "js/boot.js"].forEach(run);
 
 sandbox.PokeMem.renderEncounter();
@@ -314,6 +314,8 @@ enc33.phase = "event";
 sandbox.PokeMem.renderEncounter();
 check("事件屏：战斗类事件显示事件屏、藏战斗屏",
   els["event-screen"].style.display === "" && els["battle-screen"].style.display === "none");
+check("事件屏视觉：战斗类事件挂红色开战框",
+  els["event-screen"].classList.contains("event-kind-battle"));
 check("事件屏：标题是事件名、文案是事件文本",
   els["event-title"].textContent === "训练师挑战" &&
   els["event-text"].textContent.indexOf("2 梦想结晶") >= 0);
@@ -324,6 +326,8 @@ click(els["event-fight-btn"]);
 check("事件屏：点开始战斗、刷出 Lv 7 野生、回战斗屏",
   enc33.phase === "battle" && !!enc33.wild && enc33.wild.level === 7 &&
   els["battle-screen"].style.display === "" && els["event-screen"].style.display === "none");
+check("事件战斗 chip：战斗屏挂事件名",
+  els["battle-event-chip"].style.display === "" && els["battle-event-chip"].textContent === "训练师挑战");
 // 非战斗事件：显示继续前进、不显示开始战斗
 enc33.event = { kind: "buff", event: { zh: "好心人指导", en: "Kind Stranger" },
   textZh: "好心人指导：全队攻击 +5（本次遭遇战）",
@@ -332,6 +336,8 @@ enc33.phase = "event";
 sandbox.PokeMem.renderEncounter();
 check("事件屏：非战斗事件显示继续前进、不显示开始战斗",
   els["event-continue-btn"].style.display === "" && els["event-fight-btn"].style.display === "none");
+check("事件屏视觉：增益事件挂金色上浮",
+  els["event-screen"].classList.contains("event-kind-buff"));
 check("事件屏：结束按钮一直显示", els["event-end-btn"].style.display !== "none");
 // 战报：事件后必定紧跟刷野，战报显示事件文本（不是刷野行）
 enc33.log = [{ t: "event", name: "训练师挑战", nameEn: "Trainer Battle",
@@ -354,6 +360,15 @@ sandbox.PokeMem.renderEncounter();
 check("结算屏：宝箱亲密度 +2 显示一行",
   els["battle-settle-affection"].style.display === "" &&
   els["battle-settle-affection"].textContent.indexOf("+2") >= 0);
+// 流星（Task 30B）：结算翻倍（chestMult 2）且宝箱非空时划一道流星，否则不显示
+enc33.chest = { crystals: 6, items: [], capped: false, affection: 0 };
+enc33.mods.chestMult = 2;
+sandbox.PokeMem.renderEncounter();
+check("结算屏：流星翻倍时划一道流星",
+  els["battle-settle-meteor"].style.display === "" && els["battle-settle-meteor"].classList.contains("anim-meteor"));
+enc33.mods.chestMult = 1;
+sandbox.PokeMem.renderEncounter();
+check("结算屏：不翻倍时不划流星", els["battle-settle-meteor"].style.display === "none");
 // 战斗动画（Task 30A）：事件战斗 → 点攻击（野生 Lv 7 < 出战卡，我方先攻必定飘数字）
 enc33.event = { kind: "battle", event: { zh: "训练师挑战", en: "Trainer Battle" },
   textZh: "路过的训练师向你挑战！胜 → 得 2 梦想结晶",
@@ -362,6 +377,11 @@ enc33.event = { kind: "battle", event: { zh: "训练师挑战", en: "Trainer Bat
 enc33.phase = "event";
 sandbox.PokeMem.renderEncounter();
 click(els["event-fight-btn"]);
+// 野生血量压到 1 点：伤害 16 一击必杀、没有反击，前冲才留得住——
+// 野生种类是随机的，毒系 2 倍克制能秒、非毒系打不死会反击，反击按「最新动作优先」
+// 会清掉前冲，这项在 F1 修复后就成了随机器件；经验清零是防升级条目也清掉前冲
+enc33.wild.hp = 1;
+enc33.team[enc33.activeIndex].card.exp = 0;
 click(els["battle-attack-btn"]);
 check("战斗动画：攻击后飘伤害数字",
   els["battle-wild-dmg"].textContent.indexOf("-") === 0 || els["battle-wild-dmg"].textContent.indexOf("暴击") === 0,

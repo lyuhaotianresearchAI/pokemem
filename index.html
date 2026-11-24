@@ -152,6 +152,7 @@
     <div id="encounter-status" style="display:none">
       <!-- 战斗屏 -->
       <div id="battle-screen">
+        <div id="battle-event-chip" class="battle-event-chip" style="display:none"></div>
         <div class="battle-ball" id="battle-ball" aria-hidden="true"></div>
         <div class="battle-panels">
           <div class="battle-side battle-wild">
@@ -199,6 +200,7 @@
       <!-- 结算屏 -->
       <div id="battle-settle" style="display:none">
         <div class="encounter-status-card">
+          <div id="battle-settle-meteor" class="settle-meteor" style="display:none" aria-hidden="true"></div>
           <h3 data-i18n="battleSettleTitle">遭遇战结束</h3>
           <p class="hint" id="battle-settle-kos"></p>
           <p class="hint" id="battle-settle-chest"></p>
@@ -306,6 +308,7 @@
 <script src="js/encounter-events.js"></script>
 <script src="js/encounter.js"></script>
 <script src="js/battle-anim.js"></script>
+<script src="js/event-anim.js"></script>
 <script src="js/encounter-ui.js"></script>
 <script src="js/home.js"></script>
 <script src="js/dex.js"></script>

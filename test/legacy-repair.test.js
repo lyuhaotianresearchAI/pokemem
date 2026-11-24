@@ -65,6 +65,7 @@ run("js/scenes.js");
 run("js/encounter-events.js");
 run("js/encounter.js");
 run("js/battle-anim.js");
+run("js/event-anim.js");
 run("js/encounter-ui.js");
 run("js/home.js");
 run("js/dex.js");

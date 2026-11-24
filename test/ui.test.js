@@ -209,6 +209,25 @@ check("战斗动画：球飞过去后定格在野生处（ball-throw 带 forward
   css.includes("ball-throw .45s ease-out forwards"));
 check("战斗动画也尊重 reduced-motion",
   css.includes("prefers-reduced-motion") && css.includes(".battle-ball"));
+// Task 30B：事件屏视觉文件在遭遇战 UI 之前加载，战斗屏有事件名 chip、结算屏有流星
+const eventAnimJs = fs.readFileSync(__dirname + "/../js/event-anim.js", "utf8");
+check("事件屏视觉文件在遭遇战 UI 之前加载",
+  html.indexOf("js/event-anim.js") < html.indexOf("js/encounter-ui.js") &&
+  html.indexOf("js/battle-anim.js") < html.indexOf("js/event-anim.js"));
+check("战斗屏有事件名 chip、结算屏有流星元素",
+  html.includes('id="battle-event-chip"') && html.includes('id="battle-settle-meteor"'));
+check("事件屏视觉：5 种 kind 的 class 与关键帧都在",
+  ["event-kind-battle", "event-kind-heal", "event-kind-buff", "event-kind-debuff", "event-kind-reward"].every(function (c) { return css.includes(c); }) &&
+  ["@keyframes heal-pulse", "@keyframes buff-rise", "@keyframes debuff-shake",
+    "@keyframes reward-glow", "@keyframes reward-twinkle", "@keyframes battle-frame",
+    "@keyframes meteor-fly"].every(function (k) { return css.includes(k); }) &&
+  css.includes(".battle-event-chip") && css.includes(".settle-meteor"));
+check("事件屏视觉只叠 class、不改状态（applyKind / showMeteor / setBattleChip 都是纯 DOM 操作）",
+  eventAnimJs.includes("PokeMem.EventAnim") && eventAnimJs.includes("applyKind") &&
+  encUiJs.includes("PokeMem.EventAnim.applyKind") && encUiJs.includes("PokeMem.EventAnim.setBattleChip") &&
+  encUiJs.includes("PokeMem.EventAnim.showMeteor"));
+check("事件屏视觉也尊重 reduced-motion",
+  css.includes(".settle-meteor") && css.includes("prefers-reduced-motion"));
 check("会动的图：场景轨道转圈、图标反向转（始终正着）、地形图轻浮、悬停摇摆、选中脉冲、云朵飘、球里宝可梦轻浮",
   css.includes("@keyframes orbit-spin") && css.includes("@keyframes orbit-spin-rev") &&
   css.includes(".orbit-icon") && css.includes(".orbit-wrap.paused .orbit-icon") &&

@@ -10,7 +10,7 @@ const path = require("path");
 const GachaNode = require("../gacha.js"); // 仅用于造旧存档夹具
 
 const FILES = ["pokedex.js", "avatars.js", "i18n.js", "card-progress.js", "gacha.js", "js/store.js", "js/util.js",
-  "js/lang.js", "js/types.js", "js/scenes.js", "js/scene-icons.js", "js/encounter-events.js", "js/encounter.js", "js/battle-anim.js", "js/encounter-ui.js", "js/home.js", "js/dex.js", "js/rates.js", "js/tabs.js",
+  "js/lang.js", "js/types.js", "js/scenes.js", "js/scene-icons.js", "js/encounter-events.js", "js/encounter.js", "js/battle-anim.js", "js/event-anim.js", "js/encounter-ui.js", "js/home.js", "js/dex.js", "js/rates.js", "js/tabs.js",
   "js/debug.js", "js/register.js", "js/trainer.js", "js/boot.js"];
 
 let failures = 0;
@@ -435,6 +435,8 @@ $A("event-fight-btn").click();
 check("A 事件屏：点开始战斗、回到战斗屏",
   ctxA.encounter.phase === "battle" && !!ctxA.encounter.wild &&
   $A("battle-screen").style.display !== "none" && $A("event-screen").style.display === "none");
+check("A 事件战斗：战斗屏挂事件名 chip",
+  $A("battle-event-chip").style.display !== "none" && $A("battle-event-chip").textContent === "训练师挑战");
 // 非战斗事件：显示继续前进、不显示开始战斗
 ctxA.encounter.event = { kind: "buff", event: { zh: "好心人指导", en: "Kind Stranger" },
   textZh: "好心人指导：全队攻击 +5（本次遭遇战）",
@@ -444,6 +446,8 @@ ctxA.encounter.phase = "event";
 A.PokeMem.renderEncounter();
 check("A 事件屏：非战斗事件显示继续前进、不显示开始战斗",
   $A("event-continue-btn").style.display !== "none" && $A("event-fight-btn").style.display === "none");
+check("A 事件屏：增益事件挂金色上浮视觉",
+  $A("event-screen").classList.contains("event-kind-buff"));
 $A("event-continue-btn").click();
 check("A 事件屏：非战斗事件点继续前进、回到战斗（0.5 掷出战斗）",
   ctxA.encounter.phase === "battle" && !!ctxA.encounter.wild);

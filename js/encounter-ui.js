@@ -80,6 +80,8 @@
     var isBattle = ev.kind === "battle";
     $("event-fight-btn").style.display = isBattle ? "" : "none";
     $("event-continue-btn").style.display = isBattle ? "none" : "";
+    // 事件屏视觉（Task 30B）：按 kind 上视觉（回复绿光/增益金光/减益暗角/奖励星星/战斗红框）
+    if (PokeMem.EventAnim) PokeMem.EventAnim.applyKind($("event-screen"), ev.kind);
   }
   // 战斗类事件开打：刷野、进战斗屏
   function doEventFight() {
@@ -133,6 +135,14 @@
     }
     renderLog(enc);
     updateBattleButtons(enc);
+    // 事件战斗 chip（Task 30B）：事件引来的战斗，在野生面板上方挂事件名；普通战斗不挂
+    if (PokeMem.EventAnim) {
+      var evName = null;
+      if (enc.event && enc.event.kind === "battle" && enc.event.event) {
+        evName = PokeMem.lang() === "en" ? enc.event.event.en : enc.event.event.zh;
+      }
+      PokeMem.EventAnim.setBattleChip($("battle-event-chip"), evName);
+    }
     // 战斗动画（Task 30A）：状态已更新完，这里只按 log diff 在已渲染的 DOM 上叠动画
     if (PokeMem.BattleAnim) PokeMem.BattleAnim.play(enc);
   }
@@ -312,6 +322,11 @@
     // 到上限改亲密度（Task 31/32）：宝箱被封顶的部分改给出战卡亲密度 +2，有就显示一行
     $("battle-settle-affection").style.display = (chest.affection || 0) > 0 ? "" : "none";
     if ((chest.affection || 0) > 0) $("battle-settle-affection").textContent = t("battleSettleAffection", { n: chest.affection });
+    // 流星（Task 30B）：1% 流星事件让本次结算翻倍（chestMult > 1）且宝箱非空时，在结算屏划一道流星
+    if (PokeMem.EventAnim) {
+      var doubled = (enc.mods && enc.mods.chestMult > 1) && ((chest.crystals || 0) > 0 || chest.items.length > 0);
+      PokeMem.EventAnim.showMeteor($("battle-settle-meteor"), doubled);
+    }
   }
   function backToPicker() {
     ctx.encounter = null;
