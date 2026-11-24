@@ -179,6 +179,18 @@
         <div id="battle-ball-menu" class="battle-menu" style="display:none"></div>
         <div id="battle-switch-menu" class="battle-menu" style="display:none"></div>
       </div>
+      <!-- 事件屏 -->
+      <div id="event-screen" style="display:none">
+        <div class="encounter-status-card">
+          <h3 id="event-title"></h3>
+          <p class="hint" id="event-text"></p>
+          <div class="overlay-actions">
+            <button id="event-fight-btn" class="big-btn" data-i18n="eventFight">开始战斗</button>
+            <button id="event-continue-btn" class="big-btn" data-i18n="battleContinue">继续前进</button>
+            <button id="event-end-btn" data-i18n="battleEnd">结束遭遇战</button>
+          </div>
+        </div>
+      </div>
       <!-- 结算屏 -->
       <div id="battle-settle" style="display:none">
         <div class="encounter-status-card">
@@ -186,6 +198,7 @@
           <p class="hint" id="battle-settle-kos"></p>
           <p class="hint" id="battle-settle-chest"></p>
           <p class="hint" id="battle-settle-cap" style="display:none"></p>
+          <p class="hint" id="battle-settle-affection" style="display:none"></p>
           <button id="battle-settle-back-btn" class="big-btn" data-i18n="battleSettleBack">返回</button>
         </div>
       </div>

@@ -304,6 +304,57 @@ check("出征后队伍清空", nPicked() === 0);
 check("出征后切到战斗屏",
   els["encounter-picker"].style.display === "none" && els["battle-screen"].style.display === "");
 
+// 事件屏（Task 33）：强制进 event 阶段（战斗类事件）
+const enc33 = sandbox.PokeMem.ctx.encounter;
+enc33.event = { kind: "battle", event: { zh: "训练师挑战", en: "Trainer Battle" },
+  textZh: "路过的训练师向你挑战！胜 → 得 2 梦想结晶",
+  textEn: "A passing Trainer challenges you! Win to get 2 Dream Crystals.",
+  battle: { levelBonus: 2, bonus: { crystals: 2 } } };
+enc33.phase = "event";
+sandbox.PokeMem.renderEncounter();
+check("事件屏：战斗类事件显示事件屏、藏战斗屏",
+  els["event-screen"].style.display === "" && els["battle-screen"].style.display === "none");
+check("事件屏：标题是事件名、文案是事件文本",
+  els["event-title"].textContent === "训练师挑战" &&
+  els["event-text"].textContent.indexOf("2 梦想结晶") >= 0);
+check("事件屏：战斗类事件只显示开始战斗（继续前进藏起）",
+  els["event-fight-btn"].style.display === "" && els["event-continue-btn"].style.display === "none");
+// 点开始战斗：刷野（草丛基础 5 + 等级加成 2 = Lv 7）、回战斗屏
+click(els["event-fight-btn"]);
+check("事件屏：点开始战斗、刷出 Lv 7 野生、回战斗屏",
+  enc33.phase === "battle" && !!enc33.wild && enc33.wild.level === 7 &&
+  els["battle-screen"].style.display === "" && els["event-screen"].style.display === "none");
+// 非战斗事件：显示继续前进、不显示开始战斗
+enc33.event = { kind: "buff", event: { zh: "好心人指导", en: "Kind Stranger" },
+  textZh: "好心人指导：全队攻击 +5（本次遭遇战）",
+  textEn: "A kind stranger's guidance: team Attack +5 for this run." };
+enc33.phase = "event";
+sandbox.PokeMem.renderEncounter();
+check("事件屏：非战斗事件显示继续前进、不显示开始战斗",
+  els["event-continue-btn"].style.display === "" && els["event-fight-btn"].style.display === "none");
+check("事件屏：结束按钮一直显示", els["event-end-btn"].style.display !== "none");
+// 战报：事件后必定紧跟刷野，战报显示事件文本（不是刷野行）
+enc33.log = [{ t: "event", name: "训练师挑战", nameEn: "Trainer Battle",
+  textZh: "路过的训练师向你挑战！胜 → 得 2 梦想结晶",
+  textEn: "A passing Trainer challenges you! Win to get 2 Dream Crystals." },
+  { t: "spawn", id: 10, name: "绿毛虫", en: "Caterpie", level: 7 }];
+enc33.phase = "battle";
+sandbox.PokeMem.renderEncounter();
+check("战报：事件后刷野、显示事件文本",
+  els["battle-log"].textContent.indexOf("2 梦想结晶") >= 0);
+// 战报：没有事件的普通战斗，仍显示刷野行
+enc33.log = [{ t: "spawn", id: 10, name: "绿毛虫", en: "Caterpie", level: 7 }];
+sandbox.PokeMem.renderEncounter();
+check("战报：无事件时仍显示刷野行",
+  els["battle-log"].textContent.indexOf("绿毛虫") >= 0 && els["battle-log"].textContent.indexOf("Lv.7") >= 0);
+// 结算屏：宝箱亲密度 +2 显示一行
+enc33.chest = { crystals: 0, items: [], capped: true, affection: 2 };
+enc33.phase = "done";
+sandbox.PokeMem.renderEncounter();
+check("结算屏：宝箱亲密度 +2 显示一行",
+  els["battle-settle-affection"].style.display === "" &&
+  els["battle-settle-affection"].textContent.indexOf("+2") >= 0);
+
 console.log(failures === 0 ? "\n全部通过 ✅" : "\n失败 " + failures + " 项 ❌");
 process.exit(failures === 0 ? 0 : 1);
 })();

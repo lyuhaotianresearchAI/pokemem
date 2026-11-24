@@ -413,6 +413,33 @@ if (ctxA.encounter.phase === "prompt") {
   $A("battle-continue-btn").click();
   check("A 再选继续前进、回到战斗", ctxA.encounter.phase === "battle" && !!ctxA.encounter.wild);
 }
+// 事件屏（Task 33）：强制进 event 阶段（战斗类事件）
+ctxA.encounter.event = { kind: "battle", event: { zh: "训练师挑战", en: "Trainer Battle" },
+  textZh: "路过的训练师向你挑战！胜 → 得 2 梦想结晶",
+  textEn: "A passing Trainer challenges you! Win to get 2 Dream Crystals.",
+  battle: { levelBonus: 2, bonus: { crystals: 2 } } };
+ctxA.encounter.phase = "event";
+A.PokeMem.renderEncounter();
+check("A 事件屏：战斗类事件显示事件屏、标题文案对",
+  $A("event-screen").style.display !== "none" && $A("event-title").textContent === "训练师挑战" &&
+  $A("event-text").textContent.indexOf("2 梦想结晶") >= 0);
+check("A 事件屏：战斗类事件只显示开始战斗",
+  $A("event-fight-btn").style.display !== "none" && $A("event-continue-btn").style.display === "none");
+$A("event-fight-btn").click();
+check("A 事件屏：点开始战斗、回到战斗屏",
+  ctxA.encounter.phase === "battle" && !!ctxA.encounter.wild &&
+  $A("battle-screen").style.display !== "none" && $A("event-screen").style.display === "none");
+// 非战斗事件：显示继续前进、不显示开始战斗
+ctxA.encounter.event = { kind: "buff", event: { zh: "好心人指导", en: "Kind Stranger" },
+  textZh: "好心人指导：全队攻击 +5（本次遭遇战）",
+  textEn: "A kind stranger's guidance: team Attack +5 for this run." };
+ctxA.encounter.phase = "event";
+A.PokeMem.renderEncounter();
+check("A 事件屏：非战斗事件显示继续前进、不显示开始战斗",
+  $A("event-continue-btn").style.display !== "none" && $A("event-fight-btn").style.display === "none");
+$A("event-continue-btn").click();
+check("A 事件屏：非战斗事件点继续前进、回到战斗（0.5 掷出战斗）",
+  ctxA.encounter.phase === "battle" && !!ctxA.encounter.wild);
 $A("battle-retreat-btn").click();
 var chestA = ctxA.encounter.chest;
 check("A 撤退后显示结算屏、宝箱内容与实际一致", $A("battle-settle").style.display !== "none" &&

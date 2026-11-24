@@ -44,11 +44,21 @@
     if (!hasRun) { prunePicks(); renderScenes(); renderTeam(); updateStartBtn(); return; }
     if (enc.phase === "done") {
       $("battle-screen").style.display = "none";
+      $("event-screen").style.display = "none";
       $("battle-settle").style.display = "";
       $("battle-prompt").classList.remove("show");
       renderSettle(enc);
       return;
     }
+    if (enc.phase === "event") {
+      $("battle-screen").style.display = "none";
+      $("battle-settle").style.display = "none";
+      $("battle-prompt").classList.remove("show");
+      $("event-screen").style.display = "";
+      renderEvent(enc);
+      return;
+    }
+    $("event-screen").style.display = "none";
     $("battle-screen").style.display = "";
     $("battle-settle").style.display = "none";
     renderBattle(enc);
@@ -58,6 +68,26 @@
     } else {
       $("battle-prompt").classList.remove("show");
     }
+  }
+  // 事件屏（Task 33）：标题 = 事件名、文案 = 事件文本（事件表自带中英双语）；
+  // 战斗类事件只给「开始战斗」+「结束遭遇战」（得先打完或结束，不能直接继续前进，
+  // 和状态机的 eventBattlePending 一致）；非战斗事件给「继续前进」+「结束遭遇战」
+  function renderEvent(enc) {
+    var ev = enc.event || {};
+    var en = PokeMem.lang() === "en";
+    $("event-title").textContent = en ? (ev.event && ev.event.en) || "" : (ev.event && ev.event.zh) || "";
+    $("event-text").textContent = en ? (ev.textEn || "") : (ev.textZh || "");
+    var isBattle = ev.kind === "battle";
+    $("event-fight-btn").style.display = isBattle ? "" : "none";
+    $("event-continue-btn").style.display = isBattle ? "none" : "";
+  }
+  // 战斗类事件开打：刷野、进战斗屏
+  function doEventFight() {
+    var enc = ctx.encounter;
+    if (!enc) return;
+    if (!PokeMem.Encounter.startEventBattle(enc, ctx.state, Math.random).ok) return;
+    PokeMem.save();
+    renderEncounter();
   }
   // ---------- 战斗屏（Task 28） ----------
   function battleName(obj) { return PokeMem.lang() === "en" ? (obj.en || obj.name) : obj.name; }
@@ -123,12 +153,23 @@
         else if (e.mult < 1) line += " " + t("battleLogNotVery");
         break;
       }
-      if (e.t === "spawn") { line = t("battleLogSpawn", { name: logName(e), level: e.level }); break; }
+      // 每次事件后必定紧跟一次刷野（spawn）：事件文本是这场战斗的来由，战报优先显示它；
+      // 野生的名字和等级本来就在战斗屏上看得见，不丢信息；没有事件的普通战斗仍显示刷野行
+      if (e.t === "spawn") {
+        var prevEv = i > 0 ? enc.log[i - 1] : null;
+        if (prevEv && prevEv.t === "event") {
+          line = PokeMem.lang() === "en" ? (prevEv.textEn || prevEv.textZh) : (prevEv.textZh || prevEv.textEn);
+        } else {
+          line = t("battleLogSpawn", { name: logName(e), level: e.level });
+        }
+        break;
+      }
       if (e.t === "faint") { line = t("battleLogFaint", { name: logName(e) }); break; }
       if (e.t === "ko") { line = t("battleLogKo", { name: logName(e) }); break; }
       if (e.t === "catch") { line = e.success ? t("battleLogCatch", { name: logName(e) }) : t("battleLogCatchFail", { name: logName(e) }); break; }
       if (e.t === "levelup") { line = t("battleLogLevelUp", { name: logName(e), level: e.to }); break; }
       if (e.t === "switch") { line = t("battleLogSwitch", { name: logName(e) }); break; }
+      if (e.t === "event") { line = PokeMem.lang() === "en" ? (e.textEn || e.textZh) : (e.textZh || e.textEn); break; }
     }
     $("battle-log").textContent = line;
   }
@@ -266,6 +307,9 @@
     $("battle-settle-chest").textContent = chestText;
     $("battle-settle-cap").style.display = chest.capped ? "" : "none";
     if (chest.capped) $("battle-settle-cap").textContent = t("battleSettleCapped");
+    // 到上限改亲密度（Task 31/32）：宝箱被封顶的部分改给出战卡亲密度 +2，有就显示一行
+    $("battle-settle-affection").style.display = (chest.affection || 0) > 0 ? "" : "none";
+    if ((chest.affection || 0) > 0) $("battle-settle-affection").textContent = t("battleSettleAffection", { n: chest.affection });
   }
   function backToPicker() {
     ctx.encounter = null;
@@ -574,6 +618,9 @@
   $("battle-retreat-btn").addEventListener("click", doRetreat);
   $("battle-continue-btn").addEventListener("click", doContinue);
   $("battle-end-btn").addEventListener("click", doEnd);
+  $("event-fight-btn").addEventListener("click", doEventFight);
+  $("event-continue-btn").addEventListener("click", doContinue);
+  $("event-end-btn").addEventListener("click", doEnd);
   $("battle-settle-back-btn").addEventListener("click", backToPicker);
   $("team-pick-tab").addEventListener("mouseenter", clearPickTabTimers); // 移进 tab 里：取消待收
   $("team-pick-tab").addEventListener("mouseleave", scheduleHidePickTab);
