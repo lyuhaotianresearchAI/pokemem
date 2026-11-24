@@ -134,6 +134,7 @@
       return;
     }
     if (e.t === "spawn") {
+      clearOverlays(); // 新野生出场 = 新的一场战斗：上一场残留的飘字/特效/球动画必须清掉
       var sImg = el(SIDE.wild.img);
       clearMotion(sImg);
       restart(sImg, "anim-pop");
@@ -153,10 +154,24 @@
     }
   }
 
+  // 新野生出场 = 新的一场战斗：上一场残留的飘字/特效/球动画必须清掉。
+  // 原因：战斗屏在提示/事件阶段会被 display:none 藏起来，CSS 动画在隐藏时暂停、
+  // 显示后会接着播——上一场没飘完的伤害数字就会在新战斗里接着飘（走查 2026-11-24 发现）。
+  function clearOverlays() {
+    ["wild", "mine"].forEach(function (side) {
+      var dmg = el(SIDE[side].dmg);
+      if (dmg) { dmg.classList.remove("anim-dmg", "crit"); dmg.textContent = ""; }
+      var fx = el(SIDE[side].fx);
+      if (fx) { fx.classList.remove("anim-sparkle", "anim-burst"); fx.textContent = ""; }
+    });
+    var ball = el("battle-ball");
+    if (ball) ball.classList.remove("anim-ball-catch", "anim-ball-fail");
+  }
   function syncBaseline(enc) {
     lastEnc = enc;
     lastLen = enc.log.length;
     lastPct = { wild: null, mine: null };
+    clearOverlays(); // 新遭遇战也一样：上一局的飘字不能带进来
     // F3：新场次先清掉两边立绘上上局残留的终结 class（团灭时我方图挂着 anim-faint、
     // opacity 0 + forwards，没有任何东西会清它；不清理新开局我方就是隐形的）；
     // 也一并盖住旧 hideBack 计时器的跨场次竞态（旧计时器认 class，清掉了它就不再藏新图）

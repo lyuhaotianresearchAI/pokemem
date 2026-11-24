@@ -15,7 +15,7 @@ function makeClassList() {
   const s = new Set();
   return {
     add(c) { s.add(c); },
-    remove(c) { s.delete(c); },
+    remove(...cs) { cs.forEach(function (c) { s.delete(c); }); }, // 真 DOM 的 remove 支持多参数
     toggle(c, f) {
       if (f === undefined) { if (s.has(c)) s.delete(c); else s.add(c); }
       else if (f) s.add(c); else s.delete(c);
@@ -214,13 +214,32 @@ function freshEnc() {
   BattleAnim.play(enc7);
   check("刷野：野生弹出、倒下 class 清掉",
     els["battle-wild-img"].classList.contains("anim-pop") && !els["battle-wild-img"].classList.contains("anim-faint"));
+
+  // 飘字不带入下一场：上一场的飘字/特效/球残留，在新野生出场时清掉
+  BattleAnim.reset();
+  const encS = freshEnc();
+  BattleAnim.play(encS);
+  els["battle-wild-dmg"].textContent = "-56";
+  els["battle-wild-dmg"].classList.add("anim-dmg");
+  els["battle-mine-fx"].textContent = "✦✦✦";
+  els["battle-mine-fx"].classList.add("anim-sparkle");
+  els["battle-ball"].classList.add("anim-ball-fail");
+  encS.log.push({ t: "spawn", id: 10, name: "绿毛虫", en: "Caterpie", level: 5 });
+  BattleAnim.play(encS);
+  check("新野生出场清掉上一场的飘字", els["battle-wild-dmg"].textContent === "" && !els["battle-wild-dmg"].classList.contains("anim-dmg"));
+  check("新野生出场清掉上一场的特效字", els["battle-mine-fx"].textContent === "" && !els["battle-mine-fx"].classList.contains("anim-sparkle"));
+  check("新野生出场清掉上一场的球动画", !els["battle-ball"].classList.contains("anim-ball-fail"));
+  // 换人 / 升级：用自己的 enc（上面新块的 reset 打断了 enc7 的 log 追踪，不能再共用它）
+  BattleAnim.reset();
+  const enc8 = freshEnc();
+  BattleAnim.play(enc8);
   els["battle-mine-img"].classList.add("anim-faint");
-  enc7.log.push({ t: "switch", name: "小火龙", nameEn: "Charmander" });
-  BattleAnim.play(enc7);
+  enc8.log.push({ t: "switch", name: "小火龙", nameEn: "Charmander" });
+  BattleAnim.play(enc8);
   check("换人：我方弹出、倒下 class 清掉",
     els["battle-mine-img"].classList.contains("anim-pop") && !els["battle-mine-img"].classList.contains("anim-faint"));
-  enc7.log.push({ t: "levelup", name: "小火龙", nameEn: "Charmander", from: 5, to: 6 });
-  BattleAnim.play(enc7);
+  enc8.log.push({ t: "levelup", name: "小火龙", nameEn: "Charmander", from: 5, to: 6 });
+  BattleAnim.play(enc8);
   check("升级：我方金光", els["battle-mine-img"].classList.contains("anim-levelup"));
 
   // 无新条目再播一次：不报错、不重复
