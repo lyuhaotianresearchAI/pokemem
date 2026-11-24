@@ -84,11 +84,18 @@
     if (tier === "SSR") return 2;
     return 1;
   }
+  // 稀有度等级（Task 31：流星事件要「至少 SR」、草丛里的蛋要「只出 N」）
+  var TIER_RANK = { N: 0, R: 1, SR: 2, SSR: 3, UR: 4, MR: 5 };
   // 该场景、该等级能出的宝可梦行：任一属性在场景列表里，且 minLv ≤ 等级；
   // 梦幻（#151）不受场景属性限制。返回图鉴行数组（按编号升序）。
-  function eligibleSpecies(scene, level) {
+  // typeFilter 指定时只出含该属性的种（钓鱼只要水系；这时梦幻也不例外）。
+  function eligibleSpecies(scene, level, typeFilter) {
     return POKEDEX.filter(function (row) {
       if (row[6] > level) return false;
+      if (typeFilter) {
+        var types = Types.parseTypes(row[3]);
+        return types.indexOf(typeFilter) >= 0;
+      }
       if (row[0] === MEW_ID) return true;
       var types = Types.parseTypes(row[3]);
       for (var i = 0; i < types.length; i++) if (scene.types.indexOf(types[i]) >= 0) return true;
@@ -112,7 +119,9 @@
   // 先按分档权重抽稀有度——只在有候选的稀有度里抽，没候选的档不参与、权重归到其他档；
   // 各稀有度按它自己的有效等级（曲线与稀有楼层取高者）过滤候选，档内均匀抽一只。
   // 场景不存在、或该等级没有任何可选种时返回 null。
-  function spawnWild(sceneId, wins, teamMaxLevel, rng) {
+  // opts 可选（Task 31 事件用）：{ typeFilter（只出某属性）, minTier（稀有度下限）,
+  // maxTier（稀有度上限） }；任一过滤后没有候选时回落到不过滤（保证总能刷出）。
+  function spawnWild(sceneId, wins, teamMaxLevel, rng, opts) {
     rng = rng || Math.random;
     var scene = sceneById(sceneId);
     if (!scene) return null;
@@ -122,13 +131,24 @@
     teamMaxLevel = Math.floor(teamMaxLevel);
     var band = rarityBandFor(wins);
     var tiers = Object.keys(band.weights);
-    var pool = {};
-    var totalWeight = 0;
-    tiers.forEach(function (tier) {
-      var level = wildLevelFor(scene, wins, tier, teamMaxLevel);
-      var rows = eligibleSpecies(scene, level).filter(function (row) { return row[4] === tier; });
-      if (rows.length) { pool[tier] = { rows: rows, level: level }; totalWeight += band.weights[tier]; }
-    });
+    var minRank = opts && TIER_RANK[opts.minTier] != null ? TIER_RANK[opts.minTier] : 0;
+    var maxRank = opts && TIER_RANK[opts.maxTier] != null ? TIER_RANK[opts.maxTier] : 99;
+    var typeFilter = opts && opts.typeFilter;
+    function buildPool() {
+      var pool = {};
+      var totalWeight = 0;
+      tiers.forEach(function (tier) {
+        if (TIER_RANK[tier] < minRank || TIER_RANK[tier] > maxRank) return;
+        var level = wildLevelFor(scene, wins, tier, teamMaxLevel);
+        var rows = eligibleSpecies(scene, level, typeFilter).filter(function (row) { return row[4] === tier; });
+        if (rows.length) { pool[tier] = { rows: rows, level: level }; totalWeight += band.weights[tier]; }
+      });
+      return { pool: pool, totalWeight: totalWeight };
+    }
+    var built = buildPool();
+    if (!built.totalWeight) { minRank = 0; maxRank = 99; typeFilter = null; built = buildPool(); } // 过滤卡死时回落
+    var pool = built.pool;
+    var totalWeight = built.totalWeight;
     if (!totalWeight) return null;
     var participating = tiers.filter(function (t) { return !!pool[t]; });
     var r = rng() * totalWeight;
@@ -143,7 +163,7 @@
     return makeWild(row, entry.level);
   }
 
-  var Scenes = { SCENES: SCENES, RARITY_BANDS: RARITY_BANDS, MEW_ID: MEW_ID,
+  var Scenes = { SCENES: SCENES, RARITY_BANDS: RARITY_BANDS, TIER_RANK: TIER_RANK, MEW_ID: MEW_ID,
     BIRD_IDS: BIRD_IDS, MEW_MEWTO_IDS: MEW_MEWTO_IDS,
     sceneById: sceneById, sceneName: sceneName, unlockedScenes: unlockedScenes,
     rarityBandFor: rarityBandFor, wildLevelFor: wildLevelFor,

@@ -95,7 +95,7 @@ function addCard(id, level) {
 addCard(7, 50); addCard(10, 30); addCard(13, 20); addCard(16, 40); addCard(25, 60);
 sandbox.localStorage.setItem("pokemem-save-v1", JSON.stringify(state));
 // 按 index.html 的加载顺序跑
-["js/store.js", "js/util.js", "js/lang.js", "js/types.js", "js/scenes.js", "js/scene-icons.js", "js/encounter.js",
+["js/store.js", "js/util.js", "js/lang.js", "js/types.js", "js/scenes.js", "js/scene-icons.js", "js/encounter-events.js", "js/encounter.js",
   "js/encounter-ui.js", "js/home.js", "js/dex.js", "js/rates.js", "js/tabs.js", "js/debug.js",
   "js/register.js", "js/trainer.js", "js/boot.js"].forEach(run);
 

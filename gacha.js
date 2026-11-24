@@ -387,6 +387,26 @@
   // 返回 { levels, candy, items }：本次升了几级、共发多少糖果、各道具发了几个。
   // amount 非法（非数字/负数/NaN）按 0 处理；整个过程同步完成。
   // 注意：迁移用的 ensureTrainer 只修数值、不发奖励，奖励只在这里发。
+  // 遭遇战结晶每日上限（Task 29，用户定 2026-11-17：100/天；Task 31 起事件给的结晶也走这里）：
+  // 发结晶时封顶，计数记在训练师数据里（encounterCrystalsDay / encounterCrystalsToday，
+  // 本地日期 key，跨天清零）；now 可传 Date 或时间戳，默认现在。
+  var DAILY_CRYSTAL_CAP = 100;
+  function encounterDayKey(now) {
+    var d = now == null ? new Date() : new Date(now);
+    return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate();
+  }
+  function grantEncounterCrystals(state, amount, now) {
+    var t = ensureTrainer(state);
+    if (typeof amount !== "number" || !isFinite(amount)) amount = 0;
+    amount = Math.floor(amount);
+    if (amount <= 0) return { granted: 0, capped: false };
+    var today = encounterDayKey(now);
+    if (t.encounterCrystalsDay !== today) { t.encounterCrystalsDay = today; t.encounterCrystalsToday = 0; }
+    var granted = Math.min(amount, Math.max(0, DAILY_CRYSTAL_CAP - t.encounterCrystalsToday));
+    t.encounterCrystalsToday += granted;
+    t.crystals += granted;
+    return { granted: granted, capped: granted < amount };
+  }
   function addTrainerExp(state, amount) {
     var result = { levels: 0, candy: 0, items: {} };
     var t = ensureTrainer(state);
@@ -479,6 +499,8 @@
     CANDY_PER_LEVEL: CANDY_PER_LEVEL, ITEM_IDS: ITEM_IDS,
     AVATAR_IDS: AVATAR_IDS, DEFAULT_AVATAR_ID: DEFAULT_AVATAR_ID, setAvatar: setAvatar,
     newTrainer: newTrainer, ensureTrainer: ensureTrainer, grantWelcomeCrystals: grantWelcomeCrystals,
+    DAILY_CRYSTAL_CAP: DAILY_CRYSTAL_CAP, encounterDayKey: encounterDayKey,
+    grantEncounterCrystals: grantEncounterCrystals,
     validateTrainerName: validateTrainerName, registerTrainer: registerTrainer,
     exchangeCrystalsForPack: exchangeCrystalsForPack, addTrainerExp: addTrainerExp,
     levelUpCard: levelUpCard,

@@ -62,6 +62,7 @@ run("js/util.js");
 run("js/lang.js");
 run("js/types.js");
 run("js/scenes.js");
+run("js/encounter-events.js");
 run("js/encounter.js");
 run("js/encounter-ui.js");
 run("js/home.js");

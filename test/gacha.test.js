@@ -502,5 +502,32 @@ check("NEW 在第一张展示的 #001 上，其余 8 张没有",
   onesNB.length === 9 && onesNB[0].isNew === true && onesNB.slice(1).every(function (c) { return !c.isNew; }));
 check("NEW 总数还是新物种数（#001 + #003）", packNB.filter(function (c) { return c.isNew; }).length === 2);
 
+// §21. 遭遇战结晶每日上限（Task 29 的逻辑，Task 31 移到 gacha.js 给事件和宝箱共用）
+check("每日 key：同一天相同、不同天不同",
+  Gacha.encounterDayKey(new Date(2026, 10, 23)) === Gacha.encounterDayKey(new Date(2026, 10, 23, 23, 59)) &&
+  Gacha.encounterDayKey(new Date(2026, 10, 23)) !== Gacha.encounterDayKey(new Date(2026, 10, 24)));
+const sCap = Gacha.newState(1000000);
+const grant1 = Gacha.grantEncounterCrystals(sCap, 5, new Date(2026, 10, 23));
+check("发结晶：+5 全发、capped false",
+  grant1.granted === 5 && grant1.capped === false &&
+  Gacha.ensureTrainer(sCap).crystals === 5 &&
+  Gacha.ensureTrainer(sCap).encounterCrystalsToday === 5);
+const grant2 = Gacha.grantEncounterCrystals(sCap, 200, new Date(2026, 10, 23));
+check("发结晶：今天只剩 95 → 只发 95、capped true",
+  grant2.granted === 95 && grant2.capped === true &&
+  Gacha.ensureTrainer(sCap).crystals === 100 &&
+  Gacha.ensureTrainer(sCap).encounterCrystalsToday === 100);
+const grant3 = Gacha.grantEncounterCrystals(sCap, 5, new Date(2026, 10, 23));
+check("发结晶：已到上限 → 发 0、capped true",
+  grant3.granted === 0 && grant3.capped === true &&
+  Gacha.ensureTrainer(sCap).crystals === 100);
+const grant4 = Gacha.grantEncounterCrystals(sCap, 5, new Date(2026, 10, 24));
+check("发结晶：跨天清零、重新发",
+  grant4.granted === 5 && grant4.capped === false &&
+  Gacha.ensureTrainer(sCap).encounterCrystalsToday === 5);
+check("发结晶：非法数额按 0 处理",
+  Gacha.grantEncounterCrystals(sCap, NaN, new Date(2026, 10, 24)).granted === 0 &&
+  Gacha.grantEncounterCrystals(sCap, -3, new Date(2026, 10, 24)).granted === 0);
+
 console.log(failures === 0 ? "\n全部通过 ✅" : "\n失败 " + failures + " 项 ❌");
 process.exit(failures === 0 ? 0 : 1);

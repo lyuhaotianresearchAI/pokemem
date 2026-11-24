@@ -303,13 +303,15 @@ check("战斗样式齐全（HP 条、红绿、操作按钮、子菜单）",
   css.includes(".hp-bar") && css.includes(".hp-fill") && css.includes(".hp-fill.low") &&
   css.includes(".battle-actions") && css.includes(".battle-menu") && css.includes(".battle-log"));
 
-// Task 29：遭遇战结晶每日上限 100
+// Task 29：遭遇战结晶每日上限 100（Task 31 起住在抽卡核心 gacha.js，事件和宝箱共用；
+// encounter.js 只转发常量、宝箱结算走 Gacha.grantEncounterCrystals）
 const encJs = fs.readFileSync(__dirname + "/../js/encounter.js", "utf8");
-check("每日上限 100 写在遭遇战状态机里、按本地日期记",
-  encJs.includes("DAILY_CRYSTAL_CAP = 100") && encJs.includes("encounterDayKey") &&
-  encJs.includes("encounterCrystalsToday"));
+check("每日上限 100 写在抽卡核心里、按本地日期记",
+  gachaJs.includes("DAILY_CRYSTAL_CAP = 100") && gachaJs.includes("encounterDayKey") &&
+  gachaJs.includes("encounterCrystalsToday") &&
+  encJs.includes("DAILY_CRYSTAL_CAP = Gacha.DAILY_CRYSTAL_CAP"));
 check("宝箱按剩余额度发结晶、超了标 capped、道具不受影响",
-  encJs.includes("Math.min(wanted") && encJs.includes("capped: granted < wanted"));
+  encJs.includes("grantEncounterCrystals(state, wanted * chestMult, now)") && encJs.includes("capped: grant.capped"));
 check("结算屏有上限提示行（被封顶时才显示）",
   html.includes('id="battle-settle-cap"') && encUiJs.includes("battleSettleCapped") &&
   encUiJs.includes('chest.capped ? "" : "none"'));

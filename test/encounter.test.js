@@ -227,6 +227,46 @@ check("每日上限：跨天清零、昨天 100 不影响今天",
   Gacha.ensureTrainer(d4.s).encounterCrystalsDay === "2026-11-17" &&
   Gacha.ensureTrainer(d4.s).encounterCrystalsToday === 5);
 
+// Task 31：流星——本次遭遇战结算奖励翻倍（chestMult）
+let m1 = chestState(3, 3); // 应得 6
+m1.e.mods = { chestMult: 2 };
+const chM1 = Encounter.settleChest(m1.e, m1.s, () => 0.9);
+check("流星：3 击倒 + 3 越级 ×2 = 12 结晶、没道具（roll 0.9）",
+  chM1.crystals === 12 && chM1.items.length === 0 && Gacha.ensureTrainer(m1.s).crystals === 12);
+let m2 = chestState(0, 5); // 应得 5，越级 5 可 roll 道具
+m2.e.mods = { chestMult: 2 };
+const chM2 = Encounter.settleChest(m2.e, m2.s, () => 0);
+check("流星：越级 5 roll 中道具 → 同一道具给两份、结晶 ×2 = 10",
+  chM2.items.length === 2 && chM2.items[0] === chM2.items[1] && chM2.crystals === 10);
+let m3 = chestState(3, 2); // 应得 5
+m3.e.mods = { chestMult: 2 };
+Gacha.ensureTrainer(m3.s).encounterCrystalsDay = "2026-11-17";
+Gacha.ensureTrainer(m3.s).encounterCrystalsToday = 96;
+const chM3 = Encounter.settleChest(m3.e, m3.s, () => 0.9, DAY1);
+check("流星：翻倍后仍受每日上限封顶（应得 10、只剩 4 → 发 4、capped）",
+  chM3.crystals === 4 && chM3.capped === true &&
+  Gacha.ensureTrainer(m3.s).encounterCrystalsToday === 100);
+
+// Task 31：到上限——宝箱被封顶的部分改给亲密度 +2（满了无效）
+let a1 = chestState(3, 2); // 应得 5
+Gacha.ensureTrainer(a1.s).encounterCrystalsDay = "2026-11-17";
+Gacha.ensureTrainer(a1.s).encounterCrystalsToday = 98;
+const chA1 = Encounter.settleChest(a1.e, a1.s, () => 0.9, DAY1);
+check("到上限：宝箱应得 5 只发 2、被封顶的部分改给出战卡亲密度 +2",
+  chA1.crystals === 2 && chA1.capped === true && chA1.affection === 2 &&
+  a1.e.team[0].card.affection === 2);
+let a2 = chestState(3, 2);
+Gacha.ensureTrainer(a2.s).encounterCrystalsDay = "2026-11-17";
+Gacha.ensureTrainer(a2.s).encounterCrystalsToday = 98;
+a2.e.team[0].card.affection = 100;
+const chA2 = Encounter.settleChest(a2.e, a2.s, () => 0.9, DAY1);
+check("到上限：出战卡亲密度满 10 级、宝箱 +2 无效",
+  chA2.crystals === 2 && chA2.affection === 0 && a2.e.team[0].card.affection === 100);
+let a3 = chestState(3, 3);
+const chA3 = Encounter.settleChest(a3.e, a3.s, () => 0.9);
+check("没到上限：宝箱不转亲密度",
+  chA3.crystals === 6 && chA3.capped === false && chA3.affection === 0);
+
 // 14. 撤退：不挨打、按当前进度开宝箱
 const s9 = makeState();
 addCard(s9, 3, 50);

@@ -137,5 +137,23 @@ check("makeWild 卡比兽 Lv 50：HP = 公式 ×2、攻击不变",
 check("未知场景返回 null", Scenes.spawnWild("volcano", 0, 1, () => 0) === null);
 check("非法胜场按 0 算", Scenes.spawnWild("grassland", -5, 1, () => 0).id === 10);
 
+// 15. spawnWild 可选参数（Task 31 事件用：钓鱼类型过滤、流星稀有度下限、蛋稀有度上限）
+check("类型过滤：溪流钓鱼只出水系",
+  [0, 0.3, 0.7, 0.99].every(function (r) {
+    var w = Scenes.spawnWild("stream", 0, 1, function () { return r; }, { typeFilter: "water" });
+    return w && Types.parseTypes(w.types).indexOf("water") >= 0;
+  }));
+check("类型过滤：梦幻不参与钓鱼（它不是水系）",
+  [0, 0.5, 0.99].every(function (r) {
+    var w = Scenes.spawnWild("stream", 0, 1, function () { return r; }, { typeFilter: "water" });
+    return w && w.id !== 151;
+  }));
+check("稀有度下限：草丛 6 胜 + minTier SR → SR（本来 6 胜分档有 N/R/SR/SSR）",
+  Scenes.spawnWild("grassland", 6, 1, function () { return 0; }, { minTier: "SR" }).tier === "SR");
+check("稀有度上限：冠军之路 15 胜 + maxTier N → N（本来能出 UR/MR）",
+  Scenes.spawnWild("champions-road", 15, 1, function () { return 0.9999; }, { maxTier: "N" }).tier === "N");
+check("上下限卡死时回落：草丛 0 胜分档只有 N，minTier SR 仍刷得出（回落到 N）",
+  Scenes.spawnWild("grassland", 0, 1, function () { return 0; }, { minTier: "SR" }).tier === "N");
+
 console.log(failures === 0 ? "\n全部通过 ✅" : "\n失败 " + failures + " 项 ❌");
 process.exit(failures === 0 ? 0 : 1);
