@@ -163,6 +163,8 @@
       // 运行期修正值（和 js/encounter-events.js 的 ensureMods 同形；常驻的整场有效，
       // 「下一场」的在每场战斗结束时清掉）
       event: null, pendingBonus: null, arenaRemaining: 0,
+      // Task 34 保底：自上次事件以来打赢的场次；到 3 场时下一次继续前进必定触发事件
+      battlesSinceEvent: 0,
       mods: { atkBonus: 0, critBonus: 0, damageMultNext: 1, catchMultNext: 1,
         forceFirstNext: false, forceWildFirstNext: false, wildLevelBonus: 0, minTierNext: null, chestMult: 1 } };
     spawnNextWild(enc, rng);
@@ -220,6 +222,8 @@
     var active = activeMember(enc);
     var wild = enc.wild;
     enc.wins += 1;
+    // Task 34 保底：每打赢一场（擂台的每场都算）+1；出事件时在 nextStep 里清零
+    enc.battlesSinceEvent = (enc.battlesSinceEvent || 0) + 1;
     if (how === "ko") { enc.kos += 1; log(enc, { t: "ko", name: wild.name, nameEn: wild.en }); }
     var highLevel = wild.level > active.card.level;
     if (highLevel) enc.highLevelWins += 1;
@@ -430,16 +434,20 @@
   // 事件当场结算（applyEvent），进 event 阶段等界面展示；战斗类事件要等玩家点「开始战斗」
   // （startEventBattle）才刷野。没有可选事件时回落到战斗。战斗类事件未打之前不能继续前进
   // （得先打完或结束遭遇战）。
+  // Task 34 保底：自上次事件以来连赢 3 场后，下一次继续前进必定触发事件
+  // （30% 概率照常 roll，保底只在 3 场没出事件时兜底；rollEvent 为空时回落战斗）
   function nextStep(enc, state, rng, now) {
     rng = rng || Math.random;
     if (enc.phase !== "prompt" && enc.phase !== "event") return { ok: false, error: "notInPrompt" };
     if (enc.phase === "event" && enc.event && enc.event.kind === "battle") return { ok: false, error: "eventBattlePending" };
     if (enc.needsPick) return { ok: false, error: "needPick" };
-    if (rng() < 0.30) {
+    var guaranteed = (enc.battlesSinceEvent || 0) >= 3;
+    if (guaranteed || rng() < 0.30) {
       var ev = EncounterEvents.rollEvent(enc, state, rng, now);
       if (ev) {
         var res = EncounterEvents.applyEvent(enc, state, ev, rng, now);
         enc.event = res;
+        enc.battlesSinceEvent = 0;
         enc.phase = "event";
         log(enc, { t: "event", name: res.event.zh, nameEn: res.event.en, textZh: res.textZh, textEn: res.textEn });
         return { ok: true, phase: "event", event: res };
@@ -464,7 +472,7 @@
     enc.phase = "battle";
     return { ok: true, phase: "battle", wild: enc.wild };
   }
-  // 战间选择：继续前进——70% 战斗 / 30% 事件（nextStep）
+  // 战间选择：继续前进——70% 战斗 / 30% 事件（nextStep；连赢 3 场后必定出事件，Task 34）
   function continueRun(enc, state, rng, now) {
     return nextStep(enc, state, rng, now);
   }

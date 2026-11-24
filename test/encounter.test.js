@@ -483,5 +483,34 @@ g2.e.phase = "event";
 const gr2 = Encounter.startEventBattle(g2.e, g2.s, () => 0);
 check("蛋：刷出的野生是 N", gr2.ok && g2.e.wild.tier === "N");
 
+// 17h. Task 34 保底：连赢 3 场后必定出事件（30% 概率照常，只在 3 场没出时兜底）
+function winOne(e, s) { e.wild.hp = 1; Encounter.attack(e, s, noCrit); }
+let g = promptEnc("grassland");
+check("保底：开场打赢 1 场，battlesSinceEvent 是 1", g.e.battlesSinceEvent === 1);
+Encounter.nextStep(g.e, g.s, () => 0.5); // roll 到战斗
+winOne(g.e, g.s); // 连赢 2 场
+Encounter.nextStep(g.e, g.s, () => 0.5); // roll 到战斗
+winOne(g.e, g.s); // 连赢 3 场
+const gs = Encounter.nextStep(g.e, g.s, seq32([0.5, 0]));
+check("保底：连赢 3 场后，rng 0.5（本来会 roll 战斗）也必定出事件、计数清零",
+  gs.ok && gs.phase === "event" && g.e.event.event.id === "help-stranger" && g.e.battlesSinceEvent === 0);
+// 保底循环：非战斗事件后计数从 0 重来，2 场时不提前触发，3 场后再次保底
+let c = promptEnc("city", 15);
+c.e.battlesSinceEvent = 3; // 模拟已连赢 3 场
+const cs = Encounter.nextStep(c.e, c.s, seq32([0.5, 0.35]));
+check("保底：计数 3 时直接出事件（城市好心人指导）、计数清零",
+  cs.ok && cs.phase === "event" && c.e.event.event.id === "kind-mentor" && c.e.battlesSinceEvent === 0);
+Encounter.nextStep(c.e, c.s, () => 0.5); // 非战斗事件屏上继续前进 → 战斗
+winOne(c.e, c.s); // 连赢 1 场
+Encounter.nextStep(c.e, c.s, () => 0.5);
+winOne(c.e, c.s); // 连赢 2 场
+const cs2 = Encounter.nextStep(c.e, c.s, () => 0.5);
+check("保底：连赢 2 场时不提前触发（rng 0.5 仍是战斗）",
+  cs2.ok && cs2.phase === "battle" && c.e.battlesSinceEvent === 2);
+winOne(c.e, c.s); // 连赢 3 场
+const cs3 = Encounter.nextStep(c.e, c.s, seq32([0.5, 0.35]));
+check("保底：再连赢 3 场后再次必定出事件、计数清零",
+  cs3.ok && cs3.phase === "event" && c.e.battlesSinceEvent === 0);
+
 console.log(failures === 0 ? "\n全部通过 ✅" : "\n失败 " + failures + " 项 ❌");
 process.exit(failures === 0 ? 0 : 1);
