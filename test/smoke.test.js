@@ -10,7 +10,7 @@ const path = require("path");
 const GachaNode = require("../gacha.js"); // 仅用于造旧存档夹具
 
 const FILES = ["pokedex.js", "avatars.js", "i18n.js", "card-progress.js", "gacha.js", "js/store.js", "js/util.js",
-  "js/lang.js", "js/types.js", "js/scenes.js", "js/scene-icons.js", "js/encounter-events.js", "js/encounter.js", "js/encounter-ui.js", "js/home.js", "js/dex.js", "js/rates.js", "js/tabs.js",
+  "js/lang.js", "js/types.js", "js/scenes.js", "js/scene-icons.js", "js/encounter-events.js", "js/encounter.js", "js/battle-anim.js", "js/encounter-ui.js", "js/home.js", "js/dex.js", "js/rates.js", "js/tabs.js",
   "js/debug.js", "js/register.js", "js/trainer.js", "js/boot.js"];
 
 let failures = 0;
@@ -370,6 +370,11 @@ check("A 攻击后战报有字、野生掉了血或进了战间选择",
   $A("battle-log").textContent.length > 0 &&
   (ctxA.encounter.wild ? ctxA.encounter.wild.hp < wildHpBefore : ctxA.encounter.phase === "prompt"),
   $A("battle-log").textContent);
+// 战斗动画（Task 30A）：攻击后至少一侧飘出伤害数字（野生先攻就飘在我方）
+check("A 攻击后飘伤害数字",
+  $A("battle-wild-dmg").textContent.indexOf("-") === 0 || $A("battle-wild-dmg").textContent.indexOf("暴击") === 0 ||
+  $A("battle-mine-dmg").textContent.indexOf("-") === 0 || $A("battle-mine-dmg").textContent.indexOf("暴击") === 0,
+  "野生侧 " + $A("battle-wild-dmg").textContent + " / 我方侧 " + $A("battle-mine-dmg").textContent);
 var switchedByForce = false;
 if (ctxA.encounter.needsPick) {
   // 小概率：野生暴击把出战卡打倒了，强制菜单已打开，直接免费选下一只

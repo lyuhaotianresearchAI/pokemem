@@ -96,7 +96,7 @@ addCard(7, 50); addCard(10, 30); addCard(13, 20); addCard(16, 40); addCard(25, 6
 sandbox.localStorage.setItem("pokemem-save-v1", JSON.stringify(state));
 // 按 index.html 的加载顺序跑
 ["js/store.js", "js/util.js", "js/lang.js", "js/types.js", "js/scenes.js", "js/scene-icons.js", "js/encounter-events.js", "js/encounter.js",
-  "js/encounter-ui.js", "js/home.js", "js/dex.js", "js/rates.js", "js/tabs.js", "js/debug.js",
+  "js/battle-anim.js", "js/encounter-ui.js", "js/home.js", "js/dex.js", "js/rates.js", "js/tabs.js", "js/debug.js",
   "js/register.js", "js/trainer.js", "js/boot.js"].forEach(run);
 
 sandbox.PokeMem.renderEncounter();
@@ -354,6 +354,25 @@ sandbox.PokeMem.renderEncounter();
 check("结算屏：宝箱亲密度 +2 显示一行",
   els["battle-settle-affection"].style.display === "" &&
   els["battle-settle-affection"].textContent.indexOf("+2") >= 0);
+// 战斗动画（Task 30A）：事件战斗 → 点攻击（野生 Lv 7 < 出战卡，我方先攻必定飘数字）
+enc33.event = { kind: "battle", event: { zh: "训练师挑战", en: "Trainer Battle" },
+  textZh: "路过的训练师向你挑战！胜 → 得 2 梦想结晶",
+  textEn: "A passing Trainer challenges you! Win to get 2 Dream Crystals.",
+  battle: { levelBonus: 2, bonus: { crystals: 2 } } };
+enc33.phase = "event";
+sandbox.PokeMem.renderEncounter();
+click(els["event-fight-btn"]);
+click(els["battle-attack-btn"]);
+check("战斗动画：攻击后飘伤害数字",
+  els["battle-wild-dmg"].textContent.indexOf("-") === 0 || els["battle-wild-dmg"].textContent.indexOf("暴击") === 0,
+  els["battle-wild-dmg"].textContent);
+check("战斗动画：攻击方前冲", els["battle-mine-img"].classList.contains("anim-lunge-mine"));
+// 打倒：手写 ko 条目（renderBattle 已藏图，动画要先亮回来再倒下）
+enc33.log.push({ t: "ko", name: "绿毛虫", nameEn: "Caterpie" });
+enc33.wild = null;
+sandbox.PokeMem.renderEncounter();
+check("战斗动画：打倒时野生图亮回 + 倒下淡出",
+  els["battle-wild-img"].style.display === "" && els["battle-wild-img"].classList.contains("anim-faint"));
 
 console.log(failures === 0 ? "\n全部通过 ✅" : "\n失败 " + failures + " 项 ❌");
 process.exit(failures === 0 ? 0 : 1);

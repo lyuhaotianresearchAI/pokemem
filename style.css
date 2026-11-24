@@ -275,13 +275,14 @@ button { font-family: inherit; }
 .encounter-status-card h3 { margin: 4px 0 8px; text-align: center; }
 /* 战斗屏（Task 28） */
 .battle-panels { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }
-.battle-side { background: #fff; border-radius: 14px; padding: 10px; box-shadow: 0 4px 12px rgba(0,0,0,.08); text-align: center; }
+.battle-side { background: #fff; border-radius: 14px; padding: 10px; box-shadow: 0 4px 12px rgba(0,0,0,.08); text-align: center; position: relative; }
 .battle-side img { width: 96px; height: 96px; object-fit: contain; }
 .battle-name { font-size: 15px; font-weight: bold; color: #333; }
 .battle-types { display: flex; justify-content: center; gap: 4px; margin: 4px 0; font-size: 13px; color: #666; flex-wrap: wrap; }
 .battle-affection { font-size: 12px; color: #e3350d; margin: 4px 0; }
-.hp-bar { height: 10px; background: #eee; border-radius: 999px; overflow: hidden; margin: 6px 0; }
-.hp-fill { height: 100%; background: linear-gradient(90deg, #7ed957, #4caf50); border-radius: 999px; transition: width .3s ease; }
+.hp-bar { height: 10px; background: #eee; border-radius: 999px; overflow: hidden; margin: 6px 0; position: relative; }
+.hp-ghost { position: absolute; left: 0; top: 0; height: 100%; width: 100%; background: linear-gradient(90deg, #ff8a75, #e3350d); border-radius: 999px; z-index: 0; }
+.hp-fill { height: 100%; background: linear-gradient(90deg, #7ed957, #4caf50); border-radius: 999px; transition: width .3s ease; position: relative; z-index: 1; }
 .hp-fill.low { background: linear-gradient(90deg, #ff8a75, #e3350d); }
 .battle-hp-text { font-size: 13px; color: #333; }
 .battle-exp { font-size: 12px; color: #666; }
@@ -293,6 +294,44 @@ button { font-family: inherit; }
 .battle-menu-title { font-size: 14px; font-weight: bold; margin-bottom: 6px; }
 .battle-menu button { display: block; width: 100%; padding: 10px; margin: 4px 0; border-radius: 10px; border: 1px solid #f0c9c0; background: #fff; font-size: 14px; cursor: pointer; text-align: left; }
 .battle-menu button:disabled { background: #f7f7f7; color: #bbb; cursor: not-allowed; }
+/* 战斗动画（Task 30A）：伤害数字、抓捕特效的浮层 + 球；动画只叠在已更新的 DOM 上，不拖逻辑 */
+#battle-screen { position: relative; }
+.battle-dmg { position: absolute; top: 6px; left: 0; right: 0; text-align: center; font-size: 18px; font-weight: bold; color: #e3350d; text-shadow: 0 1px 0 #fff, 0 0 6px rgba(255,255,255,.9); pointer-events: none; opacity: 0; z-index: 3; }
+.battle-dmg.crit { color: #f5a623; font-size: 22px; }
+.battle-fx { position: absolute; top: 30px; left: 0; right: 0; text-align: center; font-size: 26px; font-weight: bold; pointer-events: none; opacity: 0; z-index: 3; }
+.battle-ball { position: absolute; left: 68%; top: 58%; width: 28px; height: 28px; border-radius: 50%; display: none; z-index: 4;
+  background: linear-gradient(#e3350d 0 46%, #222 46% 54%, #fff 54%); box-shadow: 0 2px 6px rgba(0,0,0,.3); }
+.battle-ball::after { content: ""; position: absolute; left: 50%; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: #fff; border: 2px solid #222; box-sizing: border-box; }
+.anim-lunge-mine { animation: lunge-left .3s ease; }
+.anim-lunge-wild { animation: lunge-right .3s ease; }
+.anim-hit { animation: hit-shake .3s ease, hit-flash .3s ease; }
+.anim-faint { animation: faint-drop .6s ease forwards; }
+.anim-caught { animation: caught-shrink .4s ease 1s forwards; }
+.anim-pop { animation: pop-in .25s ease; }
+.anim-levelup { animation: levelup-glow .6s ease; }
+.anim-dmg { animation: dmg-float .8s ease-out forwards; }
+.anim-sparkle { color: #f5a623; animation: sparkle-pop .9s ease 1s forwards; }
+.anim-burst { color: #e3350d; animation: burst-pop .45s ease 1s forwards; }
+.anim-ball-catch { display: block; animation: ball-throw .45s ease-out forwards, ball-wobble .18s ease-in-out .45s 3, ball-caught .35s ease-in 1s forwards; }
+.anim-ball-fail { display: block; animation: ball-throw .45s ease-out forwards, ball-wobble .18s ease-in-out .45s 3, ball-burst .3s ease-in 1s forwards; }
+@keyframes lunge-left { 0% { transform: translateX(0); } 40% { transform: translateX(-12px); } 100% { transform: translateX(0); } }
+@keyframes lunge-right { 0% { transform: translateX(0); } 40% { transform: translateX(12px); } 100% { transform: translateX(0); } }
+@keyframes hit-shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 50% { transform: translateX(4px); } 75% { transform: translateX(-3px); } }
+@keyframes hit-flash { 0% { filter: brightness(1.8) sepia(1) hue-rotate(-30deg) saturate(3); } 100% { filter: none; } }
+@keyframes faint-drop { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(14px); opacity: 0; } }
+@keyframes caught-shrink { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(.2); opacity: 0; } }
+@keyframes pop-in { 0% { transform: scale(.6); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes levelup-glow { 0%, 100% { filter: none; } 50% { filter: drop-shadow(0 0 10px rgba(245,166,35,.95)); } }
+@keyframes dmg-float { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-16px); opacity: 0; } }
+@keyframes sparkle-pop { 0% { transform: scale(.4) rotate(0deg); opacity: 0; } 40% { transform: scale(1.3) rotate(12deg); opacity: 1; } 100% { transform: scale(1) rotate(0deg); opacity: 0; } }
+@keyframes burst-pop { 0% { transform: scale(.5); opacity: 1; } 100% { transform: scale(1.6); opacity: 0; } }
+@keyframes ball-throw { 0% { left: 68%; top: 58%; } 100% { left: 22%; top: 16%; } }
+@keyframes ball-wobble { 0%, 100% { transform: rotate(0deg); } 25% { transform: rotate(14deg); } 75% { transform: rotate(-14deg); } }
+@keyframes ball-caught { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(.2); opacity: 0; } }
+@keyframes ball-burst { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(1.6); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .battle-side img, .battle-dmg, .battle-fx, .battle-ball, .hp-ghost, .hp-fill { animation: none !important; transition: none !important; }
+}
 .trainer-rename { display: flex; gap: 8px; margin-top: 12px; }
 .trainer-rename input { flex: 1; min-width: 0; padding: 10px 16px; font-size: 15px; border: 1px solid #f0c9c0; border-radius: 999px; outline: none; }
 .trainer-rename input:focus { border-color: #ff8a75; box-shadow: 0 0 0 3px rgba(255,138,117,.25); }

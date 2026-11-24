@@ -189,6 +189,26 @@ check("场景是轨道：9 个小圆圈绕中心转，中心显示悬停或选�
 check("地形图文件在场景逻辑之后、遭遇战 UI 之前加载",
   html.indexOf("js/scenes.js") < html.indexOf("js/scene-icons.js") &&
   html.indexOf("js/scene-icons.js") < html.indexOf("js/encounter-ui.js"));
+// Task 30A：战斗动画文件在遭遇战 UI 之前加载，战斗屏有动画浮层元素
+const battleAnimJs = fs.readFileSync(__dirname + "/../js/battle-anim.js", "utf8");
+check("战斗动画文件在遭遇战 UI 之前加载",
+  html.indexOf("js/battle-anim.js") < html.indexOf("js/encounter-ui.js") &&
+  html.indexOf("js/encounter.js") < html.indexOf("js/battle-anim.js"));
+check("战斗屏有伤害数字、特效、血条残影、球的浮层元素",
+  ["battle-wild-dmg", "battle-mine-dmg", "battle-wild-fx", "battle-mine-fx",
+    "battle-wild-hp-ghost", "battle-mine-hp-ghost", "battle-ball"].every(function (id) { return html.includes('id="' + id + '"'); }));
+check("战斗动画：前冲/受击/倒下/弹出/飘字/球弧线/晃动/星星/炸开的关键帧都在",
+  ["@keyframes lunge-left", "@keyframes lunge-right", "@keyframes hit-shake", "@keyframes hit-flash",
+    "@keyframes faint-drop", "@keyframes caught-shrink", "@keyframes pop-in", "@keyframes dmg-float",
+    "@keyframes ball-throw", "@keyframes ball-wobble", "@keyframes sparkle-pop", "@keyframes burst-pop"].every(function (k) { return css.includes(k); }) &&
+  css.includes(".anim-hit") && css.includes(".anim-ball-catch") && css.includes(".anim-ball-fail"));
+check("战斗动画只读 log、不改状态（play 按 log 长度 diff、动画不拖逻辑）",
+  battleAnimJs.includes("enc.log.slice(lastLen)") && battleAnimJs.includes("PokeMem.BattleAnim") &&
+  encUiJs.includes("PokeMem.BattleAnim.play(enc)"));
+check("战斗动画：球飞过去后定格在野生处（ball-throw 带 forwards，不闪回）",
+  css.includes("ball-throw .45s ease-out forwards"));
+check("战斗动画也尊重 reduced-motion",
+  css.includes("prefers-reduced-motion") && css.includes(".battle-ball"));
 check("会动的图：场景轨道转圈、图标反向转（始终正着）、地形图轻浮、悬停摇摆、选中脉冲、云朵飘、球里宝可梦轻浮",
   css.includes("@keyframes orbit-spin") && css.includes("@keyframes orbit-spin-rev") &&
   css.includes(".orbit-icon") && css.includes(".orbit-wrap.paused .orbit-icon") &&

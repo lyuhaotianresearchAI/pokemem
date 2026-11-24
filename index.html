@@ -152,19 +152,24 @@
     <div id="encounter-status" style="display:none">
       <!-- 战斗屏 -->
       <div id="battle-screen">
+        <div class="battle-ball" id="battle-ball" aria-hidden="true"></div>
         <div class="battle-panels">
           <div class="battle-side battle-wild">
             <img id="battle-wild-img" alt="">
+            <div class="battle-dmg" id="battle-wild-dmg" aria-hidden="true"></div>
+            <div class="battle-fx" id="battle-wild-fx" aria-hidden="true"></div>
             <div class="battle-name" id="battle-wild-name"></div>
             <div class="battle-types" id="battle-wild-types"></div>
-            <div class="hp-bar"><div id="battle-wild-hp-fill" class="hp-fill"></div></div>
+            <div class="hp-bar"><div class="hp-ghost" id="battle-wild-hp-ghost"></div><div id="battle-wild-hp-fill" class="hp-fill"></div></div>
             <div class="battle-hp-text" id="battle-wild-hp-text"></div>
           </div>
           <div class="battle-side battle-mine">
             <img id="battle-mine-img" alt="">
+            <div class="battle-dmg" id="battle-mine-dmg" aria-hidden="true"></div>
+            <div class="battle-fx" id="battle-mine-fx" aria-hidden="true"></div>
             <div class="battle-name" id="battle-mine-name"></div>
             <div class="battle-affection" id="battle-mine-affection"></div>
-            <div class="hp-bar"><div id="battle-mine-hp-fill" class="hp-fill"></div></div>
+            <div class="hp-bar"><div class="hp-ghost" id="battle-mine-hp-ghost"></div><div id="battle-mine-hp-fill" class="hp-fill"></div></div>
             <div class="battle-hp-text" id="battle-mine-hp-text"></div>
             <div class="battle-exp" id="battle-mine-exp"></div>
           </div>
@@ -300,6 +305,7 @@
 <script src="js/scene-icons.js"></script>
 <script src="js/encounter-events.js"></script>
 <script src="js/encounter.js"></script>
+<script src="js/battle-anim.js"></script>
 <script src="js/encounter-ui.js"></script>
 <script src="js/home.js"></script>
 <script src="js/dex.js"></script>
