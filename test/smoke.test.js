@@ -10,7 +10,7 @@ const path = require("path");
 const GachaNode = require("../gacha.js"); // 仅用于造旧存档夹具
 
 const FILES = ["pokedex.js", "avatars.js", "i18n.js", "card-progress.js", "gacha.js", "js/store.js", "js/util.js",
-  "js/lang.js", "js/types.js", "js/scenes.js", "js/scene-icons.js", "js/encounter-events.js", "js/encounter.js", "js/battle-anim.js", "js/event-anim.js", "js/encounter-ui.js", "js/home.js", "js/dex.js", "js/rates.js", "js/tabs.js",
+  "js/lang.js", "js/types.js", "js/scenes.js", "js/scene-icons.js", "js/encounter-events.js", "js/encounter.js", "js/battle-anim.js", "js/event-anim.js", "js/scene-bg.js", "js/encounter-ui.js", "js/home.js", "js/dex.js", "js/rates.js", "js/tabs.js",
   "js/debug.js", "js/register.js", "js/trainer.js", "js/boot.js"];
 
 let failures = 0;
@@ -355,6 +355,10 @@ check("A 选 2 张、计数 2/6", $A("team-pick-count").textContent.indexOf("2 /
 $A("encounter-start-btn").click();
 check("A 开始遭遇战：ctx.encounter 在战斗阶段、有野生",
   !!ctxA.encounter && ctxA.encounter.phase === "battle" && !!ctxA.encounter.wild);
+check("A 战斗屏按场景上背景（草丛）+ 两侧滑入",
+  $A("battle-screen").classList.contains("scene-bg-grassland") &&
+  $A("battle-wild-panel").classList.contains("anim-enter-wild") &&
+  $A("battle-mine-panel").classList.contains("anim-enter-mine"));
 check("A 开始后显示战斗屏、选队区藏起",
   $A("battle-screen").style.display !== "none" && $A("encounter-picker").style.display === "none");
 check("A 战斗屏有野生名和双方 HP 条",

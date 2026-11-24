@@ -96,7 +96,7 @@ addCard(7, 50); addCard(10, 30); addCard(13, 20); addCard(16, 40); addCard(25, 6
 sandbox.localStorage.setItem("pokemem-save-v1", JSON.stringify(state));
 // 按 index.html 的加载顺序跑
 ["js/store.js", "js/util.js", "js/lang.js", "js/types.js", "js/scenes.js", "js/scene-icons.js", "js/encounter-events.js", "js/encounter.js",
-  "js/battle-anim.js", "js/event-anim.js", "js/encounter-ui.js", "js/home.js", "js/dex.js", "js/rates.js", "js/tabs.js", "js/debug.js",
+  "js/battle-anim.js", "js/event-anim.js", "js/scene-bg.js", "js/encounter-ui.js", "js/home.js", "js/dex.js", "js/rates.js", "js/tabs.js", "js/debug.js",
   "js/register.js", "js/trainer.js", "js/boot.js"].forEach(run);
 
 sandbox.PokeMem.renderEncounter();
@@ -387,6 +387,10 @@ check("战斗动画：攻击后飘伤害数字",
   els["battle-wild-dmg"].textContent.indexOf("-") === 0 || els["battle-wild-dmg"].textContent.indexOf("暴击") === 0,
   els["battle-wild-dmg"].textContent);
 check("战斗动画：攻击方前冲", els["battle-mine-img"].classList.contains("anim-lunge-mine"));
+check("场景背景：战斗屏按场景上背景（草丛）", els["battle-screen"].classList.contains("scene-bg-grassland"));
+check("场景背景：开局两侧滑入（野生从右、我方从左）",
+  els["battle-wild-panel"].classList.contains("anim-enter-wild") &&
+  els["battle-mine-panel"].classList.contains("anim-enter-mine"));
 // 打倒：手写 ko 条目（renderBattle 已藏图，动画要先亮回来再倒下）
 enc33.log.push({ t: "ko", name: "绿毛虫", nameEn: "Caterpie" });
 enc33.wild = null;

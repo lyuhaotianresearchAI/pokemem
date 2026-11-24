@@ -145,6 +145,8 @@
     }
     // 战斗动画（Task 30A）：状态已更新完，这里只按 log diff 在已渲染的 DOM 上叠动画
     if (PokeMem.BattleAnim) PokeMem.BattleAnim.play(enc);
+    // 场景背景（Task 30C）：按场景换背景 + 入场滑入（只叠在已渲染的 DOM 上，不改状态）
+    if (PokeMem.SceneBg) PokeMem.SceneBg.play(enc);
   }
   // 战报只显示一行：从最新往回找，第一条战斗条目（spawn / hit / faint / ko / catch / levelup / switch）
   function logName(e) { return PokeMem.lang() === "en" ? (e.nameEn || e.name) : e.name; }

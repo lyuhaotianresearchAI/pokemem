@@ -230,6 +230,26 @@ check("事件屏视觉也尊重 reduced-motion",
   css.includes(".settle-meteor") && css.includes("prefers-reduced-motion"));
 check("增益光带是上浮不是下沉（buff-rise 从 -110% 到 110%，光带从卡底升到卡顶）",
   css.includes("@keyframes buff-rise { from { background-position: 0 -110%; } to { background-position: 0 110%; } }"));
+// Task 30C：场景背景文件在遭遇战 UI 之前加载，战斗屏 9 场景渐变 + 入场 + 待机浮动
+const sceneBgJs = fs.readFileSync(__dirname + "/../js/scene-bg.js", "utf8");
+check("场景背景文件在遭遇战 UI 之前加载",
+  html.indexOf("js/scene-bg.js") < html.indexOf("js/encounter-ui.js") &&
+  html.indexOf("js/event-anim.js") < html.indexOf("js/scene-bg.js"));
+check("战斗屏面板有 id、立绘包在 .battle-sprite 里",
+  html.includes('id="battle-wild-panel"') && html.includes('id="battle-mine-panel"') &&
+  html.includes('class="battle-sprite"'));
+check("战斗屏 9 个场景的背景 class 都在（渐变和轨道同款配色）",
+  ["grassland", "forest", "stream", "city", "desert", "cave", "ocean", "glacier", "champions-road"].every(function (id) { return css.includes(".scene-bg-" + id); }));
+check("场景背景：入场滑入 + 待机浮动的关键帧都在、立绘 140px",
+  ["@keyframes enter-from-right", "@keyframes enter-from-left", "@keyframes scene-idle-bob"].every(function (k) { return css.includes(k); }) &&
+  css.includes(".anim-enter-wild") && css.includes(".anim-enter-mine") && css.includes(".battle-sprite") &&
+  css.includes("width: 140px; height: 140px"));
+check("场景背景只叠 class、不改状态（apply / play 都是纯 DOM 操作）",
+  sceneBgJs.includes("PokeMem.SceneBg") && sceneBgJs.includes("log.slice(lastLen)") &&
+  sceneBgJs.includes("lastLen = log.length") &&
+  encUiJs.includes("PokeMem.SceneBg.play(enc)"));
+check("场景背景也尊重 reduced-motion",
+  css.includes("prefers-reduced-motion") && css.includes(".battle-sprite"));
 check("会动的图：场景轨道转圈、图标反向转（始终正着）、地形图轻浮、悬停摇摆、选中脉冲、云朵飘、球里宝可梦轻浮",
   css.includes("@keyframes orbit-spin") && css.includes("@keyframes orbit-spin-rev") &&
   css.includes(".orbit-icon") && css.includes(".orbit-wrap.paused .orbit-icon") &&

@@ -276,7 +276,7 @@ button { font-family: inherit; }
 /* 战斗屏（Task 28） */
 .battle-panels { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }
 .battle-side { background: #fff; border-radius: 14px; padding: 10px; box-shadow: 0 4px 12px rgba(0,0,0,.08); text-align: center; position: relative; }
-.battle-side img { width: 96px; height: 96px; object-fit: contain; }
+.battle-side img { width: 140px; height: 140px; max-width: 100%; object-fit: contain; }
 .battle-name { font-size: 15px; font-weight: bold; color: #333; }
 .battle-types { display: flex; justify-content: center; gap: 4px; margin: 4px 0; font-size: 13px; color: #666; flex-wrap: wrap; }
 .battle-affection { font-size: 12px; color: #e3350d; margin: 4px 0; }
@@ -332,7 +332,31 @@ button { font-family: inherit; }
 @media (prefers-reduced-motion: reduce) {
   .battle-side img, .battle-dmg, .battle-fx, .battle-ball, .hp-ghost, .hp-fill { animation: none !important; transition: none !important; }
   #event-screen .encounter-status-card, #event-screen .encounter-status-card::before, #event-screen .encounter-status-card::after, .settle-meteor { animation: none !important; }
+  .battle-sprite, .anim-enter-wild, .anim-enter-mine { animation: none !important; }
 }
+
+/* ---- 场景背景（Task 30C）：战斗屏按场景换背景（复用 PR #36 的轨道渐变 + 卡通地形图） ---- */
+/* 渐变和 .orbit-cell[data-scene="..."] 同款配色；地形图是 ::before 上的淡色水印（--scene-art 由 js/scene-bg.js 设置，SCENE_ICONS 没有时回落到代表宝可梦立绘）；面板半透明透出底色 */
+#battle-screen.scene-bg-grassland { background: linear-gradient(160deg, #cdeeb4, #79b657 55%, #4e8f3a); }
+#battle-screen.scene-bg-forest { background: linear-gradient(160deg, #a8d8a0, #3f7d44 55%, #245c2e); }
+#battle-screen.scene-bg-stream { background: linear-gradient(160deg, #bfe6f5, #5aa9d6 55%, #2f7fb8); }
+#battle-screen.scene-bg-city { background: linear-gradient(160deg, #ffd9a0, #e89b5f 55%, #b45a30); }
+#battle-screen.scene-bg-desert { background: linear-gradient(160deg, #ffe9b0, #e8b96a 55%, #c08a3e); }
+#battle-screen.scene-bg-cave { background: linear-gradient(160deg, #b9a8cc, #6b5a8a 55%, #3d2f56); }
+#battle-screen.scene-bg-ocean { background: linear-gradient(160deg, #a8d8f0, #3f7fc9 55%, #1e4f8f); }
+#battle-screen.scene-bg-glacier { background: linear-gradient(160deg, #eef7ff, #a8d4ee 55%, #6fa8d8); }
+#battle-screen.scene-bg-champions-road { background: linear-gradient(160deg, #ffe9a8, #d4a437 55%, #7a4a9e); }
+#battle-screen[class*="scene-bg-"]::before { content: ""; position: absolute; inset: 0; background-image: var(--scene-art, none); background-size: 72% auto; background-position: center 28%; background-repeat: no-repeat; opacity: .28; pointer-events: none; z-index: 0; }
+#battle-screen[class*="scene-bg-"] .battle-panels, #battle-screen[class*="scene-bg-"] .battle-log, #battle-screen[class*="scene-bg-"] .battle-actions, #battle-screen[class*="scene-bg-"] .battle-menu, #battle-screen[class*="scene-bg-"] .battle-event-chip { position: relative; z-index: 1; }
+#battle-screen[class*="scene-bg-"] .battle-side { background: rgba(255,255,255,.88); }
+/* 待机轻浮：包一层 .battle-sprite 浮动，不和 BattleAnim 的 img 动画打架 */
+.battle-sprite { animation: scene-idle-bob 2.6s ease-in-out infinite; }
+@keyframes scene-idle-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+/* 入场：野生从右边滑入、我方从左边滑入（只滑面板） */
+.anim-enter-wild { animation: enter-from-right .45s ease-out; }
+.anim-enter-mine { animation: enter-from-left .45s ease-out; }
+@keyframes enter-from-right { from { transform: translateX(60px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes enter-from-left { from { transform: translateX(-60px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 
 /* ---- 事件屏视觉（Task 30B）：按事件 kind 给事件屏上视觉，v1 不按 43 个事件逐个画 ---- */
 #event-screen[class*="event-kind-"] .encounter-status-card { position: relative; overflow: hidden; }
