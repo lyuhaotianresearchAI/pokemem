@@ -197,11 +197,13 @@ check("战斗动画文件在遭遇战 UI 之前加载",
 check("战斗屏有伤害数字、特效、血条残影、球的浮层元素",
   ["battle-wild-dmg", "battle-mine-dmg", "battle-wild-fx", "battle-mine-fx",
     "battle-wild-hp-ghost", "battle-mine-hp-ghost", "battle-ball"].every(function (id) { return html.includes('id="' + id + '"'); }));
-check("战斗动画：前冲/受击/倒下/弹出/飘字/球弧线/晃动/星星/炸开的关键帧都在",
+check("战斗动画：前冲/受击/倒下/弹出/飘字/球弧线/晃动/星星/炸开/闪避的关键帧都在",
   ["@keyframes lunge-left", "@keyframes lunge-right", "@keyframes hit-shake", "@keyframes hit-flash",
     "@keyframes faint-drop", "@keyframes caught-shrink", "@keyframes pop-in", "@keyframes dmg-float",
+    "@keyframes dodge-step",
     "@keyframes ball-throw", "@keyframes ball-wobble", "@keyframes sparkle-pop", "@keyframes burst-pop"].every(function (k) { return css.includes(k); }) &&
-  css.includes(".anim-hit") && css.includes(".anim-ball-catch") && css.includes(".anim-ball-fail"));
+  css.includes(".anim-hit") && css.includes(".anim-ball-catch") && css.includes(".anim-ball-fail") &&
+  css.includes(".anim-dodge") && css.includes(".battle-dmg.dodge"));
 check("战斗动画只读 log、不改状态（play 按 log 长度 diff、动画不拖逻辑）",
   battleAnimJs.includes("enc.log.slice(lastLen)") && battleAnimJs.includes("PokeMem.BattleAnim") &&
   encUiJs.includes("PokeMem.BattleAnim.play(enc)"));

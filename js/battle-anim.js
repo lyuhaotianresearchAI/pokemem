@@ -24,10 +24,10 @@
   }
   function clearCls(elm, cls) { if (elm && elm.classList) elm.classList.remove(cls); }
   function hasCls(elm, cls) { return !!(elm && elm.classList && elm.classList.contains(cls)); }
-  // 同一立绘一次只能播一个动作：七个动作 class 都写 animation 简写、特异度相同，
+  // 同一立绘一次只能播一个动作：八个动作 class 都写 animation 简写、特异度相同，
   // 谁在 style.css 里排得靠后谁赢（F1：[hit, hit] 批次里前冲就被后定义的 anim-hit 压掉）。
   // 所以每个动画上身前先清掉该立绘上所有其它动作 class，「最新动作优先」，不依赖文件顺序。
-  var MOTION = ["anim-lunge-mine", "anim-lunge-wild", "anim-hit", "anim-faint", "anim-caught", "anim-pop", "anim-levelup"];
+  var MOTION = ["anim-lunge-mine", "anim-lunge-wild", "anim-hit", "anim-faint", "anim-caught", "anim-pop", "anim-levelup", "anim-dodge"];
   function clearMotion(elm) {
     if (!elm || !elm.classList) return;
     MOTION.forEach(function (c) { elm.classList.remove(c); });
@@ -65,7 +65,15 @@
     var dmg = el(SIDE[side].dmg);
     if (!dmg) return;
     dmg.textContent = (crit ? "暴击！-" : "-") + damage;
-    if (dmg.classList) dmg.classList.toggle("crit", !!crit);
+    if (dmg.classList) { dmg.classList.toggle("crit", !!crit); dmg.classList.remove("dodge"); }
+    restart(dmg, "anim-dmg");
+  }
+  // 闪避飘字（Task 35 跟进）：「闪避！」蓝色字，和伤害数字共用飘浮动画、不同颜色
+  function showDodge(side) {
+    var dmg = el(SIDE[side].dmg);
+    if (!dmg) return;
+    dmg.textContent = "闪避！";
+    if (dmg.classList) { dmg.classList.remove("crit"); dmg.classList.add("dodge"); }
     restart(dmg, "anim-dmg");
   }
 
@@ -97,6 +105,16 @@
       showDmg(defSide, e.damage, e.crit);
       // 打倒/抓到后野生已不在 enc 里，残影要从这条 log 的 defHp 读（enc.wild 是 null）
       if (typeof e.defHp === "number" && typeof e.defHpMax === "number") setGhost(defSide, pctOf(e.defHp, e.defHpMax));
+      return;
+    }
+    if (e.t === "miss") {
+      // 闪避（Task 35 跟进）：只有野生打我方会闪避——被打方往旁边（远离野生）闪一步、
+      // 飘蓝色「闪避！」；不掉血、不播残影；随后同批的 hit 会按「最新动作优先」清掉它
+      var dodgeSide = e.by === "wild" ? "mine" : "wild";
+      var dodgeImg = el(SIDE[dodgeSide].img);
+      clearMotion(dodgeImg);
+      restart(dodgeImg, "anim-dodge");
+      showDodge(dodgeSide);
       return;
     }
     if (e.t === "ko") {
@@ -160,7 +178,7 @@
   function clearOverlays() {
     ["wild", "mine"].forEach(function (side) {
       var dmg = el(SIDE[side].dmg);
-      if (dmg) { dmg.classList.remove("anim-dmg", "crit"); dmg.textContent = ""; }
+      if (dmg) { dmg.classList.remove("anim-dmg", "crit", "dodge"); dmg.textContent = ""; }
       var fx = el(SIDE[side].fx);
       if (fx) { fx.classList.remove("anim-sparkle", "anim-burst"); fx.textContent = ""; }
     });

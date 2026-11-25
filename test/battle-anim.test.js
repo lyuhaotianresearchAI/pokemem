@@ -94,6 +94,34 @@ function freshEnc() {
   check("野生打：野生前冲（anim-lunge-wild）", els["battle-wild-img"].classList.contains("anim-lunge-wild"));
   check("野生打：飘 -12 到我方", els["battle-mine-dmg"].textContent === "-12");
 
+  // 闪避（Task 35 跟进）：野生打过来闪中——我方往旁边闪一步、飘蓝色「闪避！」，不掉血
+  BattleAnim.reset();
+  const encM = freshEnc();
+  BattleAnim.play(encM); // 同步基线
+  encM.log.push({ t: "miss", by: "wild", attacker: "绿毛虫", attackerEn: "Caterpie", defender: "妙蛙种子", defenderEn: "Bulbasaur" });
+  BattleAnim.play(encM);
+  check("闪避：我方闪一步（anim-dodge）", els["battle-mine-img"].classList.contains("anim-dodge"));
+  check("闪避：飘蓝色「闪避！」+ dodge class",
+    els["battle-mine-dmg"].textContent === "闪避！" && els["battle-mine-dmg"].classList.contains("dodge") &&
+    els["battle-mine-dmg"].classList.contains("anim-dmg"));
+  check("闪避：不掉血、残影不动",
+    encM.team[0].hp === 80 && els["battle-mine-hp-ghost"].style.width === "80%");
+  // 闪避飘字不带入下一场：新野生出场时清掉
+  encM.log.push({ t: "spawn", id: 10, name: "绿毛虫", en: "Caterpie", level: 5 });
+  BattleAnim.play(encM);
+  check("新野生出场清掉闪避飘字",
+    els["battle-mine-dmg"].textContent === "" && !els["battle-mine-dmg"].classList.contains("dodge") &&
+    !els["battle-mine-dmg"].classList.contains("anim-dmg"));
+  // [miss, hit] 批次：先闪避、随后打中——每侧最终只剩最新动作
+  encM.log.push({ t: "miss", by: "wild", attacker: "绿毛虫", attackerEn: "Caterpie", defender: "妙蛙种子", defenderEn: "Bulbasaur" });
+  encM.log.push({ t: "hit", by: "wild", attacker: "绿毛虫", defender: "妙蛙种子", damage: 12, crit: false, mult: 1, defHp: 68, defHpMax: 100 });
+  encM.team[0].hp = 68;
+  BattleAnim.play(encM);
+  check("[miss, hit]：随后打中——我方最终只剩受击，闪避 class 清掉",
+    els["battle-mine-img"].classList.contains("anim-hit") && !els["battle-mine-img"].classList.contains("anim-dodge"));
+  check("[miss, hit]：飘字变回伤害数字、蓝字清掉",
+    els["battle-mine-dmg"].textContent === "-12" && !els["battle-mine-dmg"].classList.contains("dodge"));
+
   // [hit, hit] 批次（F1）：标准双向交锋，每侧最终只剩最新动作的 class
   BattleAnim.reset();
   const encH = freshEnc();

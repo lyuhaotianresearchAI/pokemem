@@ -298,6 +298,7 @@ button { font-family: inherit; }
 #battle-screen { position: relative; }
 .battle-dmg { position: absolute; top: 6px; left: 0; right: 0; text-align: center; font-size: 18px; font-weight: bold; color: #e3350d; text-shadow: 0 1px 0 #fff, 0 0 6px rgba(255,255,255,.9); pointer-events: none; opacity: 0; z-index: 3; }
 .battle-dmg.crit { color: #f5a623; font-size: 22px; }
+.battle-dmg.dodge { color: #38bdf8; font-size: 20px; }
 .battle-fx { position: absolute; top: 30px; left: 0; right: 0; text-align: center; font-size: 26px; font-weight: bold; pointer-events: none; opacity: 0; z-index: 3; }
 .battle-ball { position: absolute; left: 68%; top: 58%; width: 28px; height: 28px; border-radius: 50%; display: none; z-index: 4;
   background: linear-gradient(#e3350d 0 46%, #222 46% 54%, #fff 54%); box-shadow: 0 2px 6px rgba(0,0,0,.3); }
@@ -309,6 +310,7 @@ button { font-family: inherit; }
 .anim-caught { animation: caught-shrink .4s ease 1s forwards; }
 .anim-pop { animation: pop-in .25s ease; }
 .anim-levelup { animation: levelup-glow .6s ease; }
+.anim-dodge { animation: dodge-step .45s ease; }
 .anim-dmg { animation: dmg-float .8s ease-out forwards; }
 .anim-sparkle { color: #f5a623; animation: sparkle-pop .9s ease 1s forwards; }
 .anim-burst { color: #e3350d; animation: burst-pop .45s ease 1s forwards; }
@@ -323,6 +325,7 @@ button { font-family: inherit; }
 @keyframes pop-in { 0% { transform: scale(.6); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 @keyframes levelup-glow { 0%, 100% { filter: none; } 50% { filter: drop-shadow(0 0 10px rgba(245,166,35,.95)); } }
 @keyframes dmg-float { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-16px); opacity: 0; } }
+@keyframes dodge-step { 0% { transform: translateX(0); } 35% { transform: translateX(14px); } 100% { transform: translateX(0); } }
 @keyframes sparkle-pop { 0% { transform: scale(.4) rotate(0deg); opacity: 0; } 40% { transform: scale(1.3) rotate(12deg); opacity: 1; } 100% { transform: scale(1) rotate(0deg); opacity: 0; } }
 @keyframes burst-pop { 0% { transform: scale(.5); opacity: 1; } 100% { transform: scale(1.6); opacity: 0; } }
 @keyframes ball-throw { 0% { left: 68%; top: 58%; } 100% { left: 22%; top: 16%; } }

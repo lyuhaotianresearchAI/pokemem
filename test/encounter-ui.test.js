@@ -364,6 +364,13 @@ enc33.log = [{ t: "miss", by: "wild", attacker: "绿毛虫", attackerEn: "Caterp
 sandbox.PokeMem.renderEncounter();
 check("战报：闪避显示闪避行",
   els["battle-log"].textContent.indexOf("闪避") >= 0, els["battle-log"].textContent);
+// 闪避特效（Task 35 跟进）：再推一条 miss，动画按 log diff 播——我方飘「闪避！」+ 闪一步
+enc33.log.push({ t: "miss", by: "wild", attacker: "绿毛虫", attackerEn: "Caterpie",
+  defender: enc33.team[enc33.activeIndex].name, defenderEn: enc33.team[enc33.activeIndex].en });
+sandbox.PokeMem.renderEncounter();
+check("闪避特效：我方飘「闪避！」+ 闪一步",
+  els["battle-mine-dmg"].textContent === "闪避！" && els["battle-mine-img"].classList.contains("anim-dodge"),
+  els["battle-mine-dmg"].textContent);
 // 结算屏：宝箱亲密度 +2 显示一行
 enc33.chest = { crystals: 0, items: [], capped: true, affection: 2 };
 enc33.phase = "done";
