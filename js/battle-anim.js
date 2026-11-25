@@ -165,7 +165,13 @@
       if (fx) { fx.classList.remove("anim-sparkle", "anim-burst"); fx.textContent = ""; }
     });
     var ball = el("battle-ball");
-    if (ball) ball.classList.remove("anim-ball-catch", "anim-ball-fail");
+    if (ball) {
+      ball.classList.remove("anim-ball-catch", "anim-ball-fail");
+      // 球是 catch 分支用内联 display:block 显示的：只清 class 不清它，
+      // class 一丢、forwards 的透明一丢，球就以原样回到我方位置一直挂着
+      // （扔出的球没有消失）；清掉动画时一并藏起来，下次扔球分支会重新显示
+      if (ball.style) ball.style.display = "none";
+    }
   }
   function syncBaseline(enc) {
     lastEnc = enc;

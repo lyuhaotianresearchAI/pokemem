@@ -229,6 +229,24 @@ function freshEnc() {
   check("新野生出场清掉上一场的飘字", els["battle-wild-dmg"].textContent === "" && !els["battle-wild-dmg"].classList.contains("anim-dmg"));
   check("新野生出场清掉上一场的特效字", els["battle-mine-fx"].textContent === "" && !els["battle-mine-fx"].classList.contains("anim-sparkle"));
   check("新野生出场清掉上一场的球动画", !els["battle-ball"].classList.contains("anim-ball-fail"));
+
+  // 扔出的球不能留在场上：挣脱后新野生出场，球必须藏起来
+  // （bug：clearOverlays 只清 class、不清 catch 分支设的内联 display:block，
+  //  class 一丢、forwards 的透明一丢，球就以原样回到我方位置一直挂着）
+  BattleAnim.reset();
+  const encB = freshEnc();
+  BattleAnim.play(encB);
+  encB.log.push({ t: "catch", name: "绿毛虫", nameEn: "Caterpie", ball: "poke_ball", success: false });
+  BattleAnim.play(encB);
+  check("挣脱后球先显示", els["battle-ball"].style.display === "block" && els["battle-ball"].classList.contains("anim-ball-fail"));
+  encB.log.push({ t: "spawn", id: 10, name: "绿毛虫", en: "Caterpie", level: 5 });
+  BattleAnim.play(encB);
+  check("新野生出场：球藏起来（display none + class 清掉）",
+    els["battle-ball"].style.display === "none" && !els["battle-ball"].classList.contains("anim-ball-fail"));
+  encB.log.push({ t: "catch", name: "绿毛虫", nameEn: "Caterpie", ball: "poke_ball", success: true });
+  BattleAnim.play(encB);
+  check("再扔球：球重新显示 + anim-ball-catch",
+    els["battle-ball"].style.display === "block" && els["battle-ball"].classList.contains("anim-ball-catch"));
   // 换人 / 升级：用自己的 enc（上面新块的 reset 打断了 enc7 的 log 追踪，不能再共用它）
   BattleAnim.reset();
   const enc8 = freshEnc();
