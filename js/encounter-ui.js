@@ -82,6 +82,8 @@
     $("event-continue-btn").style.display = isBattle ? "none" : "";
     // 事件屏视觉（Task 30B）：按 kind 上视觉（回复绿光/增益金光/减益暗角/奖励星星/战斗红框）
     if (PokeMem.EventAnim) PokeMem.EventAnim.applyKind($("event-screen"), ev.kind);
+    // 音效（Task 36）：同一个事件对象只播一次
+    if (PokeMem.Sound) PokeMem.Sound.event(ev);
   }
   // 战斗类事件开打：刷野、进战斗屏
   function doEventFight() {
@@ -149,6 +151,8 @@
     if (PokeMem.BattleAnim) PokeMem.BattleAnim.play(enc);
     // 场景背景（Task 30C）：按场景换背景 + 入场滑入（只叠在已渲染的 DOM 上，不改状态）
     if (PokeMem.SceneBg) PokeMem.SceneBg.play(enc);
+    // 音效（Task 36）：只播新长出来的 log 条目
+    if (PokeMem.Sound) PokeMem.Sound.play(enc);
   }
   // 战报只显示一行：从最新往回找，第一条战斗条目（spawn / hit / faint / ko / catch / levelup / switch）
   function logName(e) { return PokeMem.lang() === "en" ? (e.nameEn || e.name) : e.name; }
@@ -339,6 +343,9 @@
       var doubled = (enc.mods && enc.mods.chestMult > 1) && ((chest.crystals || 0) > 0 || chest.items.length > 0);
       PokeMem.EventAnim.showMeteor($("battle-settle-meteor"), doubled);
     }
+    // 音效（Task 36）：同一个宝箱对象只播一次（传 enc.chest 本身；renderSettle 里
+    // 的 chest 在没宝箱时是每次新建的兜底对象，传它身份守卫会失效）
+    if (PokeMem.Sound) PokeMem.Sound.settle(enc.chest);
   }
   function backToPicker() {
     ctx.encounter = null;

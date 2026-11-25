@@ -10,7 +10,7 @@ const path = require("path");
 const GachaNode = require("../gacha.js"); // 仅用于造旧存档夹具
 
 const FILES = ["pokedex.js", "avatars.js", "i18n.js", "card-progress.js", "gacha.js", "js/store.js", "js/util.js",
-  "js/lang.js", "js/types.js", "js/scenes.js", "js/scene-icons.js", "js/encounter-events.js", "js/encounter.js", "js/battle-anim.js", "js/event-anim.js", "js/scene-bg.js", "js/encounter-ui.js", "js/home.js", "js/dex.js", "js/rates.js", "js/tabs.js",
+  "js/lang.js", "js/types.js", "js/scenes.js", "js/scene-icons.js", "js/encounter-events.js", "js/encounter.js", "js/battle-anim.js", "js/event-anim.js", "js/scene-bg.js", "js/sound.js", "js/encounter-ui.js", "js/home.js", "js/dex.js", "js/rates.js", "js/tabs.js",
   "js/debug.js", "js/register.js", "js/trainer.js", "js/boot.js"];
 
 let failures = 0;
@@ -240,6 +240,16 @@ check("A 输入框提示随语言切换",
   A.doc._bySelector["[data-i18n-ph]"][0].getAttribute("placeholder") === A.sandbox.i18nT("en", "searchPh"));
 $A("lang-zh").click();
 check("A 切回中文", ctxA.state.lang === "zh" && i18nTabHome.textContent === "开包");
+// 音效（Task 36）：顶栏静音开关能翻转（smoke 里没有 AudioContext，播音静默跳过，只验开关）
+check("A 静音开关初始开着", A.sandbox.PokeMem.Sound && !A.sandbox.PokeMem.Sound.isMuted() &&
+  $A("sound-toggle").textContent === "🔊");
+$A("sound-toggle").click();
+check("A 点静音开关：静音、图标变 🔇、写进 localStorage",
+  A.sandbox.PokeMem.Sound.isMuted() && $A("sound-toggle").textContent === "🔇" &&
+  A.sandbox.localStorage.getItem("pokemem-sound-muted") === "1");
+$A("sound-toggle").click();
+check("A 再点恢复：不静音、图标变回 🔊",
+  !A.sandbox.PokeMem.Sound.isMuted() && $A("sound-toggle").textContent === "🔊");
 
 const toggle = $A("debug-toggle");
 toggle.checked = true;

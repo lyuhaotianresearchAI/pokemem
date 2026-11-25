@@ -211,6 +211,20 @@ check("战斗动画：球飞过去后定格在野生处（ball-throw 带 forward
   css.includes("ball-throw .45s ease-out forwards"));
 check("战斗动画也尊重 reduced-motion",
   css.includes("prefers-reduced-motion") && css.includes(".battle-ball"));
+// Task 36：音效文件在遭遇战 UI 之前加载，顶栏有静音开关
+const soundJs = fs.readFileSync(__dirname + "/../js/sound.js", "utf8");
+check("音效文件在遭遇战 UI 之前加载",
+  html.indexOf("js/sound.js") < html.indexOf("js/encounter-ui.js") &&
+  html.indexOf("js/scene-bg.js") < html.indexOf("js/sound.js"));
+check("顶栏有静音开关按钮",
+  html.includes('id="sound-toggle"') && css.includes(".sound-btn"));
+check("音效：12 个音名 + 闪避上滑（400→1000）在音色表里",
+  ["hit", "crit", "dodge", "ko", "faint", "catch", "catchFail", "levelup",
+    "event", "settle", "spawn", "switch"].every(function (n) { return soundJs.includes(n + ":"); }) &&
+  soundJs.includes("f0: 400, f1: 1000"));
+check("遭遇战 UI 在三处调音效（战斗 log、事件屏、结算屏）",
+  encUiJs.includes("PokeMem.Sound.play(enc)") && encUiJs.includes("PokeMem.Sound.event(ev)") &&
+  encUiJs.includes("PokeMem.Sound.settle(enc.chest)"));
 // Task 30B：事件屏视觉文件在遭遇战 UI 之前加载，战斗屏有事件名 chip、结算屏有流星
 const eventAnimJs = fs.readFileSync(__dirname + "/../js/event-anim.js", "utf8");
 check("事件屏视觉文件在遭遇战 UI 之前加载",

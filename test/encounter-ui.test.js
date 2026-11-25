@@ -56,8 +56,29 @@ function makeEl(tag) {
   return el;
 }
 const els = {};
+// 假 AudioContext（Task 36）：只记建了几个振荡器，让真 UI 链的音效钩子可断言
+const oscLog = [];
+function FakeAudioContext() {
+  this.currentTime = 0;
+  this.state = "running";
+  this.destination = {};
+}
+FakeAudioContext.prototype.resume = function () {};
+FakeAudioContext.prototype.createOscillator = function () {
+  const osc = {
+    type: "",
+    frequency: { setValueAtTime() {}, linearRampToValueAtTime() {} },
+    connect() {}, start() {}, stop() {},
+  };
+  oscLog.push(osc);
+  return osc;
+};
+FakeAudioContext.prototype.createGain = function () {
+  return { gain: { setValueAtTime() {}, exponentialRampToValueAtTime() {} }, connect() {} };
+};
 const sandbox = {
   console: console,
+  AudioContext: FakeAudioContext,
   setInterval: () => 0, // boot.js 的 1 秒 tick：桩里不跑，免得进程退不出去
   setTimeout: setTimeout, // 真的定时器：选卡 tab 的悬停意图延迟（200ms）和收起宽限（300ms）要靠它
   clearTimeout: clearTimeout,
@@ -97,7 +118,7 @@ addCard(7, 50); addCard(10, 30); addCard(13, 20); addCard(16, 40); addCard(25, 6
 sandbox.localStorage.setItem("pokemem-save-v1", JSON.stringify(state));
 // 按 index.html 的加载顺序跑
 ["js/store.js", "js/util.js", "js/lang.js", "js/types.js", "js/scenes.js", "js/scene-icons.js", "js/encounter-events.js", "js/encounter.js",
-  "js/battle-anim.js", "js/event-anim.js", "js/scene-bg.js", "js/encounter-ui.js", "js/home.js", "js/dex.js", "js/rates.js", "js/tabs.js", "js/debug.js",
+  "js/battle-anim.js", "js/event-anim.js", "js/scene-bg.js", "js/sound.js", "js/encounter-ui.js", "js/home.js", "js/dex.js", "js/rates.js", "js/tabs.js", "js/debug.js",
   "js/register.js", "js/trainer.js", "js/boot.js"].forEach(run);
 
 sandbox.PokeMem.renderEncounter();
@@ -365,12 +386,15 @@ sandbox.PokeMem.renderEncounter();
 check("战报：闪避显示闪避行",
   els["battle-log"].textContent.indexOf("闪避") >= 0, els["battle-log"].textContent);
 // 闪避特效（Task 35 跟进）：再推一条 miss，动画按 log diff 播——我方飘「闪避！」+ 闪一步
+const oscBeforeMiss = oscLog.length;
 enc33.log.push({ t: "miss", by: "wild", attacker: "绿毛虫", attackerEn: "Caterpie",
   defender: enc33.team[enc33.activeIndex].name, defenderEn: enc33.team[enc33.activeIndex].en });
 sandbox.PokeMem.renderEncounter();
 check("闪避特效：我方飘「闪避！」+ 闪一步",
   els["battle-mine-dmg"].textContent === "闪避！" && els["battle-mine-img"].classList.contains("anim-dodge"),
   els["battle-mine-dmg"].textContent);
+// 音效（Task 36）：同一条 miss 在真 UI 链里播 1 声闪避音（1 个振荡器）
+check("音效：miss 后播 1 声闪避音", oscLog.length === oscBeforeMiss + 1, "实际 +" + (oscLog.length - oscBeforeMiss));
 // 结算屏：宝箱亲密度 +2 显示一行
 enc33.chest = { crystals: 0, items: [], capped: true, affection: 2 };
 enc33.phase = "done";
