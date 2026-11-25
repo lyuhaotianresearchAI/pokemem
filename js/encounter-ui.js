@@ -120,7 +120,9 @@
       $("battle-mine-img").src = imgUrl(active.speciesId);
       $("battle-mine-img").style.display = "";
       $("battle-mine-name").textContent = "#" + String(active.speciesId).padStart(3, "0") + " " + battleName(active) + "　Lv." + active.card.level;
-      $("battle-mine-affection").textContent = t("battleAffection", { level: CardProgress.affectionLevel(active.card.affection), rate: CardProgress.critRateForCard(active.card) });
+      $("battle-mine-affection").textContent = t("battleAffection", { level: CardProgress.affectionLevel(active.card.affection), rate: CardProgress.critRateForCard(active.card) }) +
+        // Task 35 闪避：只对当前这只野生有意义（等级差），没有野生时不显示
+        (wild ? t("battleEvasion", { evasion: CardProgress.evasionRateForCard(active.card, wild.level) }) : "");
       setHpBar($("battle-mine-hp-fill"), active.hp, PokeMem.Encounter.memberMaxHp(active));
       $("battle-mine-hp-text").textContent = "HP " + active.hp + " / " + PokeMem.Encounter.memberMaxHp(active);
       var need = CardProgress.cardExpNeeded(active.card.level);
@@ -165,6 +167,14 @@
         if (e.mult === 0) line += " " + t("battleLogNoEffect");
         else if (e.mult > 1) line += " " + t("battleLogSuper");
         else if (e.mult < 1) line += " " + t("battleLogNotVery");
+        break;
+      }
+      if (e.t === "miss") {
+        // 和 hit 一样：扔球失败后野生必定反击，最新一条是 miss 时，优先显示它前面那条失败的抓捕
+        var prevM = i > 0 ? enc.log[i - 1] : null;
+        if (prevM && prevM.t === "catch" && !prevM.success) { line = t("battleLogCatchFail", { name: logName(prevM) }); break; }
+        var defM = PokeMem.lang() === "en" ? (e.defenderEn || e.defender) : e.defender;
+        line = t("battleLogMiss", { defender: defM });
         break;
       }
       // 每次事件后必定紧跟一次刷野（spawn）：事件文本是这场战斗的来由，战报优先显示它；

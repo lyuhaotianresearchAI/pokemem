@@ -173,8 +173,16 @@
   }
 
   // 野生攻击出战卡（先手或反击都走这里）；返回是否打倒了出战卡
+  // Task 35 闪避：只有我方有闪避，先掷闪避再算暴击/伤害——基础 = 高出野生的等级差
+  // （低了是 0），亲密度每级 +0.5%，不设上限；闪避为 0 时不掷（不消耗 rng）；
+  // 闪中了不掉血、不暴击、不反击，记一条 miss
   function wildAttack(enc, rng) {
     var active = activeMember(enc);
+    var evasion = CardProgress.evasionRateForCard(active.card, enc.wild.level);
+    if (evasion > 0 && rng() < evasion / 100) {
+      log(enc, { t: "miss", by: "wild", attacker: enc.wild.name, attackerEn: enc.wild.en, defender: active.name, defenderEn: active.en });
+      return false;
+    }
     var mult = Types.effectiveness(enc.wild.firstType, Types.parseTypes(active.types));
     var crit = rng() < enc.wild.critRate / 100;
     var dmg = calcDamage(enc.wild.atk, mult, crit);

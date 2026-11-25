@@ -2,6 +2,7 @@
 // 检查：组队、开场、伤害、先手、反击、交换、捕捉、结算、宝箱、撤退、战间选择
 const { POKEDEX } = require("../pokedex.js");
 const Gacha = require("../gacha.js");
+const CardProgress = require("../card-progress.js");
 const Scenes = require("../js/scenes.js");
 const Encounter = require("../js/encounter.js");
 
@@ -511,6 +512,78 @@ winOne(c.e, c.s); // 连赢 3 场
 const cs3 = Encounter.nextStep(c.e, c.s, seq32([0.5, 0.35]));
 check("保底：再连赢 3 场后再次必定出事件、计数清零",
   cs3.ok && cs3.phase === "event" && c.e.battlesSinceEvent === 0);
+
+// 18. Task 35：闪避率——只有我方有；基础 = 高出野生的等级差（低了是 0），亲密度每级 +0.5%，不设上限
+// 公式单测
+check("闪避率：Lv 50 亲密度 0 级打 Lv 40 → 10%", CardProgress.evasionRateForCard({ level: 50, affection: 0 }, 40) === 10);
+check("闪避率：Lv 30 亲密度 50 点（5 级）打 Lv 45 → 2.5%", CardProgress.evasionRateForCard({ level: 30, affection: 50 }, 45) === 2.5);
+check("闪避率：Lv 20 亲密度 30 点（3 级）打同级 Lv 20 → 1.5%", CardProgress.evasionRateForCard({ level: 20, affection: 30 }, 20) === 1.5);
+check("闪避率：Lv 97 亲密度 100 点（10 级）打 Lv 5 → 97%（不设上限）", CardProgress.evasionRateForCard({ level: 97, affection: 100 }, 5) === 97);
+check("闪避率：同级、亲密度 0 → 0", CardProgress.evasionRateForCard({ level: 10, affection: 0 }, 10) === 0);
+check("闪避率：坏卡 → 0", CardProgress.evasionRateForCard(null, 5) === 0);
+// 出战卡指定等级/亲密度、野生指定种类/等级的遭遇战
+function evasionEnc(activeLevel, activeAffection, wildId, wildLevel) {
+  const s = makeState();
+  const ci = addCard(s, 6, activeLevel);
+  s.collection[6].cards[ci].affection = activeAffection;
+  const e = Encounter.startEncounter(s, "grassland", [{ speciesId: 6, cardIndex: ci }], () => 0).encounter;
+  e.wild = Scenes.makeWild(POKEDEX[wildId - 1], wildLevel);
+  return { s: s, e: e };
+}
+function seqCycle(vals) { var i = 0; return function () { return vals[i++ % vals.length]; }; } // 循环取数
+// 闪避：Lv 50 喷火龙打 Lv 40 卡比兽（闪避 10%），rng 0.05 闪中——不掉血、记 miss、我方攻击照常打中
+let ev1 = evasionEnc(50, 0, 143, 40);
+const ev1hp = ev1.e.team[0].hp;
+Encounter.attack(ev1.e, ev1.s, seq32([0.99, 0.05]));
+const ev1miss = ev1.e.log.find(l => l.t === "miss");
+check("闪避：反击闪中——不掉血、记 miss、我方攻击照常命中",
+  !!ev1miss && ev1miss.by === "wild" && ev1.e.team[0].hp === ev1hp && ev1.e.wild.hp < 430 && ev1.e.phase === "battle");
+// 没闪中：rng 0.5 ≥ 10% → 打中，卡比兽 Lv 40 攻 130、中性 43 伤（184→141）
+let ev2 = evasionEnc(50, 0, 143, 40);
+Encounter.attack(ev2.e, ev2.s, seq32([0.99, 0.5, 0.99]));
+check("闪避：没闪中——反击打中 43 伤（184→141）、记 hit 不记 miss",
+  ev2.e.team[0].hp === 141 && ev2.e.log.some(l => l.t === "hit" && l.by === "wild") && !ev2.e.log.some(l => l.t === "miss"));
+// 等级低了基础是 0，只剩亲密度：Lv 30 亲密度 5 级打 Lv 45 卡比兽（2.5%）——
+// 野生等级高所以野生先攻，第一个 rng 是闪避 roll：0.02 闪中
+let ev3 = evasionEnc(30, 50, 143, 45);
+const ev3hp = ev3.e.team[0].hp;
+Encounter.attack(ev3.e, ev3.s, seq32([0.02, 0.99]));
+check("闪避：等级低了基础 0、亲密度 2.5% 闪中——不掉血",
+  ev3.e.log.some(l => l.t === "miss") && ev3.e.team[0].hp === ev3hp);
+// 同上，rng 0.03 ≥ 2.5% → 打中，卡比兽 Lv 45 攻 145、中性 48 伤（114→66）
+let ev4 = evasionEnc(30, 50, 143, 45);
+Encounter.attack(ev4.e, ev4.s, seq32([0.03, 0.99, 0.99]));
+check("闪避：亲密度 2.5% 没闪中——反击打中 48 伤（114→66）", ev4.e.team[0].hp === 66);
+// 先攻闪避：野生 Lv 60 快龙先攻，Lv 50 喷火龙亲密度 10 级（5%），rng 0.04 闪中——
+// 野生先攻落空，我方攻击照常打出（火打龙 0.5 倍：135 攻 → 23 伤，快龙 SSR 血量 ×2：470→447），野生本回合不再攻击
+let ev5 = evasionEnc(50, 100, 149, 60);
+Encounter.attack(ev5.e, ev5.s, seq32([0.04, 0.99]));
+check("闪避：先攻闪中——我方不掉血、我方攻击照常命中（快龙 470→447）、野生本回合不再攻击",
+  ev5.e.log.some(l => l.t === "miss") && ev5.e.team[0].hp === 184 && ev5.e.wild.hp === 447 && ev5.e.phase === "battle");
+// 抓捕失败后的反击也能闪：Lv 50 打 Lv 5 绿毛虫（45%），rng 0.5 抓不住、0.1 闪中
+let ev6 = evasionEnc(50, 0, 10, 5);
+const ev6hp = ev6.e.team[0].hp;
+const rEv6 = Encounter.useBall(ev6.e, ev6.s, seq32([0.5, 0.1]), "poke_ball");
+check("闪避：抓捕失败后的反击闪中——没抓到、不掉血、记 miss、还在战斗",
+  rEv6.ok && !rEv6.caught && ev6.e.log.some(l => l.t === "miss") && ev6.e.team[0].hp === ev6hp && ev6.e.phase === "battle");
+// 闪避为 0 时不掷（不消耗 rng）：Lv 50 妙蛙花打 Lv 50 卡比兽（0%），循环 rng [0.01, 0.99]——
+// 玩家暴击率 0% 吃 0.01 不暴击；野生暴击若拿到 0.99 则不暴击（54 伤、186→132）；
+// 若闪避白白消耗了一次 rng，野生暴击就会拿到循环回来的 0.01 而暴击（108 伤、186→78）
+const sF = makeState();
+addCard(sF, 3, 50);
+const eF = Encounter.startEncounter(sF, "grassland", [{ speciesId: 3, cardIndex: 0 }], () => 0).encounter;
+eF.wild = Scenes.makeWild(POKEDEX[142], 50);
+Encounter.attack(eF, sF, seqCycle([0.01, 0.99]));
+check("闪避：闪避为 0 时不消耗 rng（野生暴击 roll 仍是 0.99、不暴击，186→132）", eF.team[0].hp === 132);
+// 换人：换上 Lv 50 的卡，野生打新上场的也能闪（Lv 50 打 Lv 5，45%，rng 0.1 闪中）
+const sW = makeState();
+addCard(sW, 6, 5);
+const ciW = addCard(sW, 6, 50);
+const eW = Encounter.startEncounter(sW, "grassland", [{ speciesId: 6, cardIndex: 0 }, { speciesId: 6, cardIndex: ciW }], () => 0).encounter;
+const wHp = eW.team[1].hp;
+Encounter.switchMember(eW, sW, seq32([0.1]), 1);
+check("闪避：换人后野生打新上场的也能闪——新卡不掉血、记 miss",
+  eW.activeIndex === 1 && eW.team[1].hp === wHp && eW.log.some(l => l.t === "miss"));
 
 console.log(failures === 0 ? "\n全部通过 ✅" : "\n失败 " + failures + " 项 ❌");
 process.exit(failures === 0 ? 0 : 1);

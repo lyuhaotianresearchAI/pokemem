@@ -9,6 +9,7 @@
 // 桩用真定时器（setTimeout/clearTimeout），mouseenter/收 tab 的检查要 await 睡 260/360ms。
 const fs = require("fs");
 const vm = require("vm");
+const CardProgress = require("../card-progress.js");
 
 let failures = 0;
 function check(name, cond, detail) {
@@ -326,6 +327,10 @@ click(els["event-fight-btn"]);
 check("事件屏：点开始战斗、刷出 Lv 7 野生、回战斗屏",
   enc33.phase === "battle" && !!enc33.wild && enc33.wild.level === 7 &&
   els["battle-screen"].style.display === "" && els["event-screen"].style.display === "none");
+// 我方栏（Task 35）：亲密度行后面跟当前这只野生的闪避率
+check("我方栏：显示闪避率（对当前野生）",
+  els["battle-mine-affection"].textContent.indexOf("闪避率 " + CardProgress.evasionRateForCard(enc33.team[enc33.activeIndex].card, enc33.wild.level) + "%") >= 0,
+  els["battle-mine-affection"].textContent);
 check("事件战斗 chip：战斗屏挂事件名",
   els["battle-event-chip"].style.display === "" && els["battle-event-chip"].textContent === "训练师挑战");
 // 非战斗事件：显示继续前进、不显示开始战斗
@@ -353,6 +358,12 @@ enc33.log = [{ t: "spawn", id: 10, name: "绿毛虫", en: "Caterpie", level: 7 }
 sandbox.PokeMem.renderEncounter();
 check("战报：无事件时仍显示刷野行",
   els["battle-log"].textContent.indexOf("绿毛虫") >= 0 && els["battle-log"].textContent.indexOf("Lv.7") >= 0);
+// 战报：闪避（Task 35）：miss 条目显示闪避行
+enc33.log = [{ t: "miss", by: "wild", attacker: "绿毛虫", attackerEn: "Caterpie",
+  defender: enc33.team[enc33.activeIndex].name, defenderEn: enc33.team[enc33.activeIndex].en }];
+sandbox.PokeMem.renderEncounter();
+check("战报：闪避显示闪避行",
+  els["battle-log"].textContent.indexOf("闪避") >= 0, els["battle-log"].textContent);
 // 结算屏：宝箱亲密度 +2 显示一行
 enc33.chest = { crystals: 0, items: [], capped: true, affection: 2 };
 enc33.phase = "done";

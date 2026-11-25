@@ -50,6 +50,14 @@
     if (!card || typeof card !== "object") return 0;
     return affectionLevel(card.affection) * 2;
   }
+  // 这张卡的闪避率（%）：只有我方有；基础值 = 高出对方的等级差（低了就是 0），
+  // 再加亲密度等级 × 0.5（0 级 0%、10 级 5%）；不设上限
+  function evasionRateForCard(card, foeLevel) {
+    if (!card || typeof card !== "object") return 0;
+    var gap = (typeof card.level === "number" && isFinite(card.level) ? card.level : 0) -
+      (typeof foeLevel === "number" && isFinite(foeLevel) ? foeLevel : 0);
+    return Math.max(0, gap) + affectionLevel(card.affection) * 0.5;
+  }
   // 给卡加经验（遭遇战每轮结算用）：加经验、溢出顺延连升、满级封顶、HP/攻击按公式重算。
   // card 必须是卡册里那张卡的对象（和 levelUpCard 一样的校验）；返回实际升了几级。
   // 升级只加最大 HP 和攻击，不碰当前生命值（遭遇战里的当前 HP 另有状态管）；经验值保留在卡上。
@@ -88,7 +96,7 @@
   var api = { AFFECTION_MAX_LEVEL: AFFECTION_MAX_LEVEL, AFFECTION_POINTS_PER_LEVEL: AFFECTION_POINTS_PER_LEVEL,
     normalizeCardProgress: normalizeCardProgress, repairCardProgress: repairCardProgress,
     affectionLevel: affectionLevel, cardExpNeeded: cardExpNeeded,
-    critRateForCard: critRateForCard, applyExpGain: applyExpGain };
+    critRateForCard: critRateForCard, evasionRateForCard: evasionRateForCard, applyExpGain: applyExpGain };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   root.CardProgress = api;
 })(typeof window !== "undefined" ? window : globalThis);
